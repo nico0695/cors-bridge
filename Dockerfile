@@ -1,18 +1,16 @@
-# Use official Node.js image
-FROM node:22-alpine
-
-# Set working directory
+# build stage
+FROM node:22-alpine AS build
 WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
 
-# Copy files
-COPY package.json ./
-COPY server.js ./
-
-# Install dependencies
+# production stage
+FROM node:22-alpine
+WORKDIR /app
+COPY --from=build /app/package*.json ./
 RUN npm install --production
-
-# Expose port
+COPY --from=build /app/dist ./dist
 EXPOSE 8080
-
-# Start app
-CMD ["npm", "start"]
+CMD [ "npm", "start" ]
