@@ -1,9 +1,20 @@
 import express from "express";
 import fetch from "node-fetch";
 import NodeCache from "node-cache";
+import pino from "pino";
 
 const app = express();
 const PORT = process.env.PORT || 8080;
+const logger = pino({
+  base: undefined,
+  timestamp: pino.stdTimeFunctions.isoTime,
+  messageKey: 'message',
+  formatters: {
+    level: (label) => {
+      return { level: label };
+    },
+  },
+});
 
 // Cache with a 5-minute TTL and a limit of 100 entries
 const cache = new NodeCache({ stdTTL: 300, maxKeys: 100 });
@@ -11,22 +22,27 @@ const cache = new NodeCache({ stdTTL: 300, maxKeys: 100 });
 app.get("/rss", async (req, res) => {
   const { url } = req.query;
   if (!url) {
+    logger.warn("Missing ?url= parameter");
     return res.status(400).json({ error: "Missing ?url= parameter" });
   }
 
   // If the URL is in the cache, return the result directly
   if (cache.has(url)) {
-    console.log(`[CACHE] HIT: ${url}`);
+    logger.info({ url, cache: "hit" }, "Serving from cache");
     const { data, contentType } = cache.get(url);
     res.set("Access-Control-Allow-Origin", "*");
     res.set("Content-Type", contentType);
     return res.send(data);
   }
 
-  console.log(`[CACHE] MISS: ${url}`);
+  logger.info({ url, cache: "miss" }, "Fetching from origin");
   try {
     const response = await fetch(url);
     if (!response.ok) {
+      logger.error(
+        { url, status: response.status },
+        "Failed to fetch remote content"
+      );
       return res
         .status(response.status)
         .json({ error: "Failed to fetch remote content" });
@@ -43,7 +59,7 @@ app.get("/rss", async (req, res) => {
     res.set("Content-Type", contentType);
     res.send(data);
   } catch (err) {
-    console.error(err);
+    logger.error({ url, err }, "Internal error fetching RSS");
     res.status(500).json({ error: "Internal error fetching RSS" });
   }
 });
@@ -53,5 +69,5 @@ app.get("/", (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`✅ RSS Proxy running on port ${PORT}`);
+  logger.info(`✅ RSS Proxy running on port ${PORT}`);
 });
