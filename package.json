@@ -8,7 +8,8 @@
     "node": ">=18.19.0"
   },
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "start:dev": "node --watch server.js | pino-pretty"
   },
   "dependencies": {
     "express": "^4.19.2",
