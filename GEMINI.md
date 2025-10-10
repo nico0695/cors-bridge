@@ -76,6 +76,8 @@ To build and run the project with Docker:
     npm run format
     ```
 
+    The project includes a `.prettierrc.json` file for configuration.
+
 *   **Architecture:** The project follows a clean architecture pattern with three layers:
     *   **`presentation`:** Handles HTTP requests and responses.
     *   **`application`:** Contains the business logic.

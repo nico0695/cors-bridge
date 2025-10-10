@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RSS Proxy</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        transition:
+          background-color 0.3s,
+          color 0.3s;
+      }
+      [data-theme='dark'] body {
+        background-color: #222;
+        color: #eee;
+      }
+      [data-theme='light'] body {
+        background-color: #eee;
+        color: #222;
+      }
+      .container {
+        text-align: center;
+      }
+      .toolbar {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        display: flex;
+        gap: 10px;
+      }
+      button {
+        cursor: pointer;
+        border: 1px solid #888;
+        background: none;
+        color: inherit;
+        border-radius: 5px;
+      }
+      #theme-switcher {
+        padding: 5px;
+      }
+      #lang-switcher {
+        padding: 5px 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="toolbar">
+      <button id="theme-switcher">☀️/🌙</button>
+      <button id="lang-switcher">EN/ES</button>
+    </div>
+    <div class="container">
+      <h1 data-en="📰 RSS Proxy" data-es="📰 Proxy RSS">📰 RSS Proxy</h1>
+      <p data-en="This is a simple RSS proxy server." data-es="Este es un simple servidor proxy de RSS.">
+        This is a simple RSS proxy server.
+      </p>
+      <p data-en="To use it, make a GET request to" data-es="Para usarlo, haz una petición GET a">
+        To use it, make a GET request to
+        <code>/rss?url=&lt;your-rss-feed-url&gt;</code>.
+      </p>
+      <p data-en="For example:" data-es="Por ejemplo:">
+        For example: <code>/rss?url=https://feeds.bbci.co.uk/news/rss.xml</code>
+      </p>
+    </div>
+
+    <script>
+      const themeSwitcher = document.getElementById('theme-switcher');
+      const langSwitcher = document.getElementById('lang-switcher');
+      const html = document.documentElement;
+
+      html.setAttribute('data-theme', 'dark');
+
+      themeSwitcher.addEventListener('click', () => {
+        const currentTheme = html.getAttribute('data-theme');
+        html.setAttribute(
+          'data-theme',
+          currentTheme === 'dark' ? 'light' : 'dark'
+        );
+      });
+
+      langSwitcher.addEventListener('click', () => {
+        const currentLang = html.getAttribute('lang') || 'en';
+        const newLang = currentLang === 'en' ? 'es' : 'en';
+        html.setAttribute('lang', newLang);
+        updateContent(newLang);
+      });
+
+      function updateContent(lang) {
+        document.querySelectorAll('[data-en]').forEach((el) => {
+          const translation = el.getAttribute(`data-${lang}`);
+          if (el.children[0] && el.children[0].tagName === 'CODE') {
+            const codeElement = el.children[0];
+            el.innerHTML = `${translation} <code>${codeElement.innerText}</code>`;
+          } else {
+            el.innerHTML = translation;
+          }
+        });
+      }
+
+      updateContent(html.getAttribute('lang') || 'en');
+    </script>
+  </body>
+</html>

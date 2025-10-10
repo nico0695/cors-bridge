@@ -22,11 +22,9 @@ const feedRepository = new InMemoryFeedRepository();
 const rssService = new RssService(feedRepository);
 const rssController = new RssController(rssService);
 
-app.get("/rss", (req, res) => rssController.getFeed(req, res));
+app.use(express.static("public"));
 
-app.get("/", (req, res) => {
-  res.send("📰 RSS Proxy is running. Use /rss?url=https://example.com/feed");
-});
+app.get("/rss", (req, res) => rssController.getFeed(req, res));
 
 app.get("/health", (req, res) => {
   const stats = feedRepository.getStats();
