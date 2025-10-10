@@ -1,0 +1,35 @@
+name: Continuous Integration-Continuous Deployment
+
+on:
+  push:
+    branches:
+      - main
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Continuous Integration
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 22
+      - run: npm ci
+  deploy:
+    runs-on: ubuntu-latest
+    name: Continuous Deployment
+    needs: [build]
+    steps:
+      - name: Deploy using ssh
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: 8081
+          script: |
+            cd /app/cors-bridge/
+            git pull
+            docker stop cors-bridge
+            docker rm cors-bridge
+            docker build -t cors-bridge .
+            docker run -d --name cors-bridge -p 8081:8080 cors-bridge
