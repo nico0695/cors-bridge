@@ -53,4 +53,8 @@ export class InMemoryFeedRepository implements FeedRepository {
   async save(url: string, feed: Feed): Promise<void> {
     this.cache.set(url, feed);
   }
+
+  getStats() {
+    return this.cache.getStats();
+  }
 }
