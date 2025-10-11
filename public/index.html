@@ -56,15 +56,129 @@
     </div>
     <div class="container">
       <h1 data-en="📰 RSS Proxy" data-es="📰 Proxy RSS">📰 RSS Proxy</h1>
-      <p data-en="This is a simple RSS proxy server." data-es="Este es un simple servidor proxy de RSS.">
+      <p
+        data-en="This is a simple RSS proxy server."
+        data-es="Este es un simple servidor proxy de RSS."
+      >
         This is a simple RSS proxy server.
       </p>
-      <p data-en="To use it, make a GET request to" data-es="Para usarlo, haz una petición GET a">
+      <p
+        data-en="To use it, make a GET request to"
+        data-es="Para usarlo, haz una petición GET a"
+      >
         To use it, make a GET request to
         <code>/rss?url=&lt;your-rss-feed-url&gt;</code>.
       </p>
       <p data-en="For example:" data-es="Por ejemplo:">
         For example: <code>/rss?url=https://feeds.bbci.co.uk/news/rss.xml</code>
+      </p>
+
+      <h2 data-en="🚀 New Features" data-es="🚀 Nuevas Características">
+        🚀 New Features
+      </h2>
+
+      <h3
+        data-en="1. Feed Transformation & Filtering"
+        data-es="1. Transformación y Filtrado de Feeds"
+      >
+        1. Feed Transformation & Filtering
+      </h3>
+      <p data-en="Endpoint:" data-es="Endpoint:">
+        Endpoint: <code>/api/feed/transform</code>
+      </p>
+      <p
+        data-en="Filter and transform RSS feeds with various options:"
+        data-es="Filtra y transforma feeds RSS con varias opciones:"
+      >
+        Filter and transform RSS feeds with various options:
+      </p>
+      <ul style="text-align: left; display: inline-block">
+        <li
+          data-en="keywords - Filter items by keywords (comma-separated)"
+          data-es="keywords - Filtrar por palabras clave (separadas por comas)"
+        >
+          <code>keywords</code> - Filter items by keywords (comma-separated)
+        </li>
+        <li
+          data-en="exclude - Exclude items by keywords"
+          data-es="exclude - Excluir por palabras clave"
+        >
+          <code>exclude</code> - Exclude items by keywords
+        </li>
+        <li
+          data-en="fromDate/toDate - Filter by date range"
+          data-es="fromDate/toDate - Filtrar por rango de fechas"
+        >
+          <code>fromDate/toDate</code> - Filter by date range
+        </li>
+        <li
+          data-en="categories - Filter by categories"
+          data-es="categories - Filtrar por categorías"
+        >
+          <code>categories</code> - Filter by categories
+        </li>
+        <li
+          data-en="limit - Limit number of items"
+          data-es="limit - Limitar número de items"
+        >
+          <code>limit</code> - Limit number of items
+        </li>
+        <li
+          data-en="sortBy - Sort by date or title"
+          data-es="sortBy - Ordenar por fecha o título"
+        >
+          <code>sortBy</code> - Sort by date or title
+        </li>
+        <li
+          data-en="format - Output format (rss, atom, json)"
+          data-es="format - Formato de salida (rss, atom, json)"
+        >
+          <code>format</code> - Output format (rss, atom, json)
+        </li>
+      </ul>
+      <p data-en="Example:" data-es="Ejemplo:">
+        Example:
+        <code
+          >/api/feed/transform?url=https://feeds.bbci.co.uk/news/rss.xml&keywords=tech&limit=5&format=json</code
+        >
+      </p>
+
+      <h3 data-en="2. Feed Merging" data-es="2. Fusión de Feeds">
+        2. Feed Merging
+      </h3>
+      <p data-en="Endpoint:" data-es="Endpoint:">
+        Endpoint: <code>/api/feed/merge</code>
+      </p>
+      <p
+        data-en="Combine multiple RSS feeds into one:"
+        data-es="Combina múltiples feeds RSS en uno:"
+      >
+        Combine multiple RSS feeds into one:
+      </p>
+      <p data-en="Example:" data-es="Ejemplo:">
+        Example:
+        <code
+          >/api/feed/merge?urls=https://feed1.com/rss,https://feed2.com/rss&limit=10&format=atom</code
+        >
+      </p>
+
+      <h3 data-en="3. Content Enhancement" data-es="3. Mejora de Contenido">
+        3. Content Enhancement
+      </h3>
+      <p data-en="Endpoint:" data-es="Endpoint:">
+        Endpoint: <code>/api/feed/enhance</code>
+      </p>
+      <p
+        data-en="Extract full article content and add metadata (reading time):"
+        data-es="Extrae el contenido completo del artículo y agrega metadatos (tiempo de lectura):"
+      >
+        Extract full article content and add metadata (reading time):
+      </p>
+      <p data-en="Example:" data-es="Ejemplo:">
+        Example:
+        <code
+          >/api/feed/enhance?url=https://feeds.bbci.co.uk/news/rss.xml&format=json</code
+        >
       </p>
     </div>
 
