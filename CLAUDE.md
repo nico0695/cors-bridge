@@ -11,6 +11,7 @@ RSS proxy server built with Node.js, Express, and TypeScript that allows fetchin
 ## Common Commands
 
 ### Development
+
 ```sh
 npm run dev          # Start dev server with hot reloading (uses tsx and pino-pretty)
 npm run build        # Compile TypeScript to dist/
@@ -20,6 +21,7 @@ npm run format       # Format code with Prettier
 ```
 
 ### Docker
+
 ```sh
 docker build -t rss-proxy .
 docker run -p 8080:8080 rss-proxy    # Docker exposes port 8080, not 3000
@@ -50,6 +52,7 @@ src/
 ```
 
 ### Dependency Flow
+
 - **Presentation** depends on **Application**
 - **Application** defines interfaces; **Infrastructure** implements them
 - **Domain** is completely independent
@@ -58,12 +61,14 @@ src/
 ### Key Components
 
 **InMemoryFeedRepository** (`src/infrastructure/repositories/InMemoryFeedRepository.ts`):
+
 - Implements caching with NodeCache (TTL: 300s, max 100 keys)
 - Fetches feeds with node-fetch when cache misses
 - Logs cache hits/misses with pino
 - Exposes `getStats()` for health endpoint
 
 **Server Entry** (`src/presentation/server.ts`):
+
 - Dependency injection happens at lines 24-26
 - Serves static files from `public/` directory
 - Routes: `/` (index.html), `/rss?url=...` (proxy), `/health` (stats)

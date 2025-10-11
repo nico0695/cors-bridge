@@ -1,18 +1,18 @@
-import express from "express";
-import path from "path";
-import fs from "fs";
-import { fileURLToPath } from "url";
-import { RssController } from "./controllers/RssController.js";
-import { RssService } from "../application/services/RssService.js";
-import { InMemoryFeedRepository } from "../infrastructure/repositories/InMemoryFeedRepository.js";
-import pino from "pino";
+import express from 'express';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+import { RssController } from './controllers/RssController.js';
+import { RssService } from '../application/services/RssService.js';
+import { InMemoryFeedRepository } from '../infrastructure/repositories/InMemoryFeedRepository.js';
+import pino from 'pino';
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 const logger = pino({
   base: undefined,
   timestamp: pino.stdTimeFunctions.isoTime,
-  messageKey: "message",
+  messageKey: 'message',
   formatters: {
     level: (label) => {
       return { level: label };
@@ -30,11 +30,11 @@ const rssController = new RssController(rssService);
 // source (`tsx src/presentation/server.ts`).
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-let publicPath = path.join(__dirname, "..", "..", "public");
+let publicPath = path.join(__dirname, '..', '..', 'public');
 
 // Fallback to process.cwd() if the computed path doesn't exist
 if (!fs.existsSync(publicPath)) {
-  const alt = path.join(process.cwd(), "public");
+  const alt = path.join(process.cwd(), 'public');
   if (fs.existsSync(alt)) {
     publicPath = alt;
   } else {
@@ -46,13 +46,13 @@ if (!fs.existsSync(publicPath)) {
 app.use(express.static(publicPath));
 
 // Ensure GET / always returns the index.html from the public folder
-app.get("/", (req, res) => {
-  res.sendFile(path.join(publicPath, "index.html"));
+app.get('/', (req, res) => {
+  res.sendFile(path.join(publicPath, 'index.html'));
 });
 
-app.get("/rss", (req, res) => rssController.getFeed(req, res));
+app.get('/rss', (req, res) => rssController.getFeed(req, res));
 
-app.get("/health", (req, res) => {
+app.get('/health', (req, res) => {
   const stats = feedRepository.getStats();
   const healthCheck = {
     uptime: process.uptime(),

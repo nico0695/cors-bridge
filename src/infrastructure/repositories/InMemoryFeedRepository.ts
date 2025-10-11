@@ -36,8 +36,7 @@ export class InMemoryFeedRepository implements FeedRepository {
         return null;
       }
 
-      const contentType =
-        response.headers.get('content-type') || 'text/plain';
+      const contentType = response.headers.get('content-type') || 'text/plain';
       const data = await response.text();
       const feed: Feed = { data, contentType };
 

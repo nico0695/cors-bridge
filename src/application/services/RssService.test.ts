@@ -1,28 +1,28 @@
-import { describe, it, expect, jest, beforeEach } from "@jest/globals";
-import { RssService } from "./RssService.js";
-import { FeedRepository } from "../repositories/FeedRepository.js";
-import { Feed } from "../../domain/Feed.js";
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { RssService } from './RssService.js';
+import { FeedRepository } from '../repositories/FeedRepository.js';
+import { Feed } from '../../domain/Feed.js';
 
-describe("RssService", () => {
+describe('RssService', () => {
   let mockRepository: jest.Mocked<FeedRepository>;
   let rssService: RssService;
 
   beforeEach(() => {
     mockRepository = {
-      findByUrl: jest.fn<FeedRepository["findByUrl"]>(),
-      save: jest.fn<FeedRepository["save"]>(),
+      findByUrl: jest.fn<FeedRepository['findByUrl']>(),
+      save: jest.fn<FeedRepository['save']>(),
     } as jest.Mocked<FeedRepository>;
 
     rssService = new RssService(mockRepository);
   });
 
-  describe("getFeed", () => {
-    it("should return feed from repository", async () => {
+  describe('getFeed', () => {
+    it('should return feed from repository', async () => {
       const mockFeed: Feed = {
-        data: "<rss>test</rss>",
-        contentType: "application/rss+xml",
+        data: '<rss>test</rss>',
+        contentType: 'application/rss+xml',
       };
-      const url = "https://example.com/feed.xml";
+      const url = 'https://example.com/feed.xml';
 
       mockRepository.findByUrl.mockResolvedValue(mockFeed);
 
@@ -33,8 +33,8 @@ describe("RssService", () => {
       expect(mockRepository.findByUrl).toHaveBeenCalledTimes(1);
     });
 
-    it("should return null when feed is not found", async () => {
-      const url = "https://example.com/not-found.xml";
+    it('should return null when feed is not found', async () => {
+      const url = 'https://example.com/not-found.xml';
 
       mockRepository.findByUrl.mockResolvedValue(null);
 
@@ -44,13 +44,13 @@ describe("RssService", () => {
       expect(mockRepository.findByUrl).toHaveBeenCalledWith(url);
     });
 
-    it("should propagate repository errors", async () => {
-      const url = "https://example.com/error.xml";
-      const error = new Error("Repository error");
+    it('should propagate repository errors', async () => {
+      const url = 'https://example.com/error.xml';
+      const error = new Error('Repository error');
 
       mockRepository.findByUrl.mockRejectedValue(error);
 
-      await expect(rssService.getFeed(url)).rejects.toThrow("Repository error");
+      await expect(rssService.getFeed(url)).rejects.toThrow('Repository error');
     });
   });
 });
