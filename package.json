@@ -1,6 +1,6 @@
 {
   "name": "rss-proxy",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Simple RSS proxy server with Express and CORS",
   "main": "dist/presentation/server.js",
   "type": "module",
