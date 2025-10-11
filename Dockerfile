@@ -12,8 +12,5 @@ WORKDIR /app
 COPY --from=build /app/package*.json ./
 RUN npm install --production
 COPY --from=build /app/dist ./dist
-# Copy static assets (public) from build stage so the runtime image
-# contains /app/public and express can serve index.html
-COPY --from=build /app/public ./public
 EXPOSE 8080
 CMD [ "npm", "start" ]
