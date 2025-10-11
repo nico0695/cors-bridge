@@ -20,7 +20,7 @@ export class RssController {
       } else {
         res.status(404).json({ error: 'Feed not found' });
       }
-    } catch (error) {
+    } catch (_error) {
       res.status(500).json({ error: 'Internal server error' });
     }
   }

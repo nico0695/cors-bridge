@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { RssController } from './controllers/RssController.js';
+import { FeedController } from './controllers/FeedController.js';
 import { RssService } from '../application/services/RssService.js';
 import { InMemoryFeedRepository } from '../infrastructure/repositories/InMemoryFeedRepository.js';
 import pino from 'pino';
@@ -24,6 +25,7 @@ const logger = pino({
 const feedRepository = new InMemoryFeedRepository();
 const rssService = new RssService(feedRepository);
 const rssController = new RssController(rssService);
+const feedController = new FeedController(feedRepository, logger);
 
 // Resolve public directory relative to this module so the app works
 // when run from `dist` (`node dist/presentation/server.js`) or from
@@ -51,6 +53,17 @@ app.get('/', (req, res) => {
 });
 
 app.get('/rss', (req, res) => rssController.getFeed(req, res));
+
+// New endpoints for feed transformation and enhancement
+app.get('/api/feed/transform', (req, res) =>
+  feedController.getTransformedFeed(req, res)
+);
+app.get('/api/feed/merge', (req, res) =>
+  feedController.getMergedFeeds(req, res)
+);
+app.get('/api/feed/enhance', (req, res) =>
+  feedController.getEnhancedFeed(req, res)
+);
 
 app.get('/health', (req, res) => {
   const stats = feedRepository.getStats();
