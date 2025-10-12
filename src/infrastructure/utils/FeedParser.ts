@@ -27,6 +27,9 @@ export class FeedParser {
     throw new Error('Unsupported feed format');
   }
 
+  console.log('asd');
+
+
   private parseRSS(rss: XmlNode): ParsedFeed {
     const channel = rss.channel;
     const items = Array.isArray(channel.item)

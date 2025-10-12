@@ -11,6 +11,9 @@ export class RssController {
       return;
     }
 
+    console.log('asd');
+
+    
     try {
       const feed = await this.rssService.getFeed(url);
       if (feed) {
