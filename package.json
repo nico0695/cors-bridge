@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@types/cheerio": "^1.0.0",
+    "better-sqlite3": "^11.0.0",
     "cheerio": "^1.1.2",
     "dotenv": "^17.2.3",
     "express": "^4.19.2",
@@ -29,6 +30,7 @@
   },
   "devDependencies": {
     "@jest/globals": "^30.2.0",
+    "@types/better-sqlite3": "^7.6.0",
     "@types/express": "^5.0.3",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.7.1",
