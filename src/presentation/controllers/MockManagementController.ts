@@ -11,6 +11,10 @@ export class MockManagementController {
   getAll = (req: Request, res: Response): void => {
     try {
       const endpoints = this.service.getAllEndpoints();
+      // Prevent caching for dynamic data
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
       res.json(endpoints);
     } catch (error) {
       this.logger.error({ error }, 'Failed to get all endpoints');
@@ -28,6 +32,10 @@ export class MockManagementController {
         return;
       }
 
+      // Prevent caching for dynamic data
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
       res.json(endpoint);
     } catch (error) {
       this.logger.error({ error }, 'Failed to get endpoint by id');
@@ -86,6 +94,10 @@ export class MockManagementController {
   getStats = (req: Request, res: Response): void => {
     try {
       const stats = this.service.getStats();
+      // Prevent caching for dynamic stats
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
       res.json(stats);
     } catch (error) {
       this.logger.error({ error }, 'Failed to get stats');
