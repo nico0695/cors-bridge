@@ -1,0 +1,832 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>API Mock Manager</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+          Cantarell, sans-serif;
+        background: #f5f5f5;
+        padding: 20px;
+        line-height: 1.6;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      header {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      h1 {
+        color: #333;
+        margin-bottom: 10px;
+      }
+
+      .stats {
+        display: flex;
+        gap: 20px;
+        color: #666;
+        font-size: 14px;
+      }
+
+      .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .stat-value {
+        font-weight: bold;
+        color: #333;
+      }
+
+      .warning {
+        color: #ff6b6b;
+      }
+
+      .success {
+        color: #51cf66;
+      }
+
+      .actions {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s;
+      }
+
+      .btn-primary {
+        background: #339af0;
+        color: white;
+      }
+
+      .btn-primary:hover {
+        background: #228be6;
+      }
+
+      .btn-danger {
+        background: #ff6b6b;
+        color: white;
+      }
+
+      .btn-danger:hover {
+        background: #fa5252;
+      }
+
+      .btn-small {
+        padding: 6px 12px;
+        font-size: 12px;
+      }
+
+      .endpoints-list {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .endpoint-item {
+        padding: 20px;
+        border-bottom: 1px solid #e9ecef;
+      }
+
+      .endpoint-item:last-child {
+        border-bottom: none;
+      }
+
+      .endpoint-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .endpoint-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .endpoint-name {
+        font-weight: 600;
+        color: #333;
+        font-size: 16px;
+      }
+
+      .endpoint-path {
+        color: #495057;
+        font-family: 'Courier New', monospace;
+        font-size: 14px;
+        background: #f1f3f5;
+        padding: 4px 8px;
+        border-radius: 4px;
+      }
+
+      .endpoint-controls {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .toggle {
+        position: relative;
+        width: 50px;
+        height: 24px;
+      }
+
+      .toggle input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: 0.3s;
+        border-radius: 24px;
+      }
+
+      .toggle-slider:before {
+        position: absolute;
+        content: '';
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.3s;
+        border-radius: 50%;
+      }
+
+      .toggle input:checked + .toggle-slider {
+        background-color: #51cf66;
+      }
+
+      .toggle input:checked + .toggle-slider:before {
+        transform: translateX(26px);
+      }
+
+      .endpoint-details {
+        display: none;
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid #e9ecef;
+      }
+
+      .endpoint-details.open {
+        display: block;
+      }
+
+      .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 15px;
+      }
+
+      .detail-item {
+        font-size: 14px;
+      }
+
+      .detail-label {
+        color: #868e96;
+        font-size: 12px;
+        margin-bottom: 4px;
+      }
+
+      .detail-value {
+        color: #333;
+        font-weight: 500;
+      }
+
+      .response-preview {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 6px;
+        margin-top: 10px;
+      }
+
+      .response-preview pre {
+        margin: 0;
+        overflow-x: auto;
+        font-size: 13px;
+        color: #495057;
+      }
+
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        overflow-y: auto;
+      }
+
+      .modal.open {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .modal-content {
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 600px;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+
+      .modal-header {
+        margin-bottom: 20px;
+      }
+
+      .modal-header h2 {
+        color: #333;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      .form-group label {
+        display: block;
+        margin-bottom: 6px;
+        color: #495057;
+        font-weight: 500;
+        font-size: 14px;
+      }
+
+      .form-group input,
+      .form-group select,
+      .form-group textarea {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+        font-size: 14px;
+        font-family: inherit;
+      }
+
+      .form-group textarea {
+        min-height: 150px;
+        font-family: 'Courier New', monospace;
+      }
+
+      .form-group small {
+        color: #868e96;
+        font-size: 12px;
+      }
+
+      .form-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 20px;
+      }
+
+      .error-message {
+        background: #ffe3e3;
+        color: #c92a2a;
+        padding: 10px;
+        border-radius: 6px;
+        margin-bottom: 15px;
+        font-size: 14px;
+      }
+
+      .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #868e96;
+      }
+
+      .empty-state h3 {
+        margin-bottom: 10px;
+        color: #495057;
+      }
+
+      .copy-btn {
+        background: #f1f3f5;
+        color: #495057;
+        padding: 4px 8px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        margin-left: 8px;
+      }
+
+      .copy-btn:hover {
+        background: #e9ecef;
+      }
+
+      .badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      .badge-success {
+        background: #d3f9d8;
+        color: #2b8a3e;
+      }
+
+      .badge-error {
+        background: #ffe3e3;
+        color: #c92a2a;
+      }
+
+      .badge-warning {
+        background: #fff3bf;
+        color: #e67700;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>API Mock Manager</h1>
+        <div class="stats">
+          <div class="stat-item">
+            <span>Total:</span>
+            <span class="stat-value" id="stat-total">0</span>
+          </div>
+          <div class="stat-item">
+            <span>Enabled:</span>
+            <span class="stat-value success" id="stat-enabled">0</span>
+          </div>
+          <div class="stat-item">
+            <span>Disabled:</span>
+            <span class="stat-value" id="stat-disabled">0</span>
+          </div>
+          <div class="stat-item">
+            <span>Remaining:</span>
+            <span class="stat-value" id="stat-remaining">50</span>/<span
+              id="stat-max"
+              >50</span
+            >
+          </div>
+        </div>
+      </header>
+
+      <div class="actions">
+        <button class="btn btn-primary" onclick="openCreateModal()">
+          + Create New Endpoint
+        </button>
+      </div>
+
+      <div class="endpoints-list" id="endpoints-list">
+        <div class="empty-state">
+          <h3>No endpoints yet</h3>
+          <p>Create your first mock endpoint to get started</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create/Edit Modal -->
+    <div class="modal" id="endpoint-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="modal-title">Create New Endpoint</h2>
+        </div>
+        <div id="error-container"></div>
+        <form id="endpoint-form">
+          <input type="hidden" id="endpoint-id" />
+
+          <div class="form-group">
+            <label for="endpoint-name">Name *</label>
+            <input
+              type="text"
+              id="endpoint-name"
+              required
+              placeholder="My API Endpoint"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="endpoint-path">Path *</label>
+            <input
+              type="text"
+              id="endpoint-path"
+              required
+              placeholder="/users/1"
+            />
+            <small>The path where this endpoint will be accessible</small>
+          </div>
+
+          <div class="form-group">
+            <label for="endpoint-group">Group ID</label>
+            <input type="text" id="endpoint-group" placeholder="users-api" />
+            <small>Optional: Group related endpoints together</small>
+          </div>
+
+          <div class="form-group">
+            <label for="endpoint-content-type">Content Type</label>
+            <select id="endpoint-content-type">
+              <option value="application/json">application/json</option>
+              <option value="application/xml">application/xml</option>
+              <option value="text/plain">text/plain</option>
+              <option value="text/html">text/html</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="endpoint-status">Status Code</label>
+            <select id="endpoint-status">
+              <option value="200">200 - OK</option>
+              <option value="201">201 - Created</option>
+              <option value="400">400 - Bad Request</option>
+              <option value="401">401 - Unauthorized</option>
+              <option value="403">403 - Forbidden</option>
+              <option value="404">404 - Not Found</option>
+              <option value="500">500 - Internal Server Error</option>
+              <option value="503">503 - Service Unavailable</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="endpoint-delay">Delay (ms)</label>
+            <input
+              type="number"
+              id="endpoint-delay"
+              min="0"
+              max="10000"
+              value="0"
+              placeholder="0"
+            />
+            <small
+              >Add artificial delay to simulate slow responses
+              (0-10000ms)</small
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="endpoint-response">Response Data *</label>
+            <textarea
+              id="endpoint-response"
+              required
+              placeholder='{"message": "Hello World"}'
+            ></textarea>
+            <small>Enter JSON or text content</small>
+          </div>
+
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="endpoint-enabled" checked />
+              Enabled
+            </label>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn" onclick="closeModal()">
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-primary">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE = '/api-mock/endpoints';
+      let endpoints = [];
+
+      // Load endpoints on page load
+      async function loadEndpoints() {
+        try {
+          const response = await fetch(API_BASE);
+          endpoints = await response.json();
+          renderEndpoints();
+          updateStats();
+        } catch (error) {
+          console.error('Failed to load endpoints:', error);
+        }
+      }
+
+      // Load stats
+      async function updateStats() {
+        try {
+          const response = await fetch('/api-mock/stats');
+          const stats = await response.json();
+          document.getElementById('stat-total').textContent = stats.total;
+          document.getElementById('stat-enabled').textContent = stats.enabled;
+          document.getElementById('stat-disabled').textContent = stats.disabled;
+          document.getElementById('stat-remaining').textContent =
+            stats.remaining;
+          document.getElementById('stat-max').textContent = stats.maxEndpoints;
+
+          if (stats.remaining <= 5) {
+            document.getElementById('stat-remaining').classList.add('warning');
+          } else {
+            document
+              .getElementById('stat-remaining')
+              .classList.remove('warning');
+          }
+        } catch (error) {
+          console.error('Failed to load stats:', error);
+        }
+      }
+
+      // Render endpoints list
+      function renderEndpoints() {
+        const list = document.getElementById('endpoints-list');
+
+        if (endpoints.length === 0) {
+          list.innerHTML = `
+          <div class="empty-state">
+            <h3>No endpoints yet</h3>
+            <p>Create your first mock endpoint to get started</p>
+          </div>
+        `;
+          return;
+        }
+
+        list.innerHTML = endpoints
+          .map((endpoint) => {
+            const statusBadge =
+              endpoint.statusCode >= 200 && endpoint.statusCode < 300
+                ? 'badge-success'
+                : endpoint.statusCode >= 400 && endpoint.statusCode < 500
+                  ? 'badge-warning'
+                  : 'badge-error';
+
+            const responsePreview =
+              typeof endpoint.responseData === 'object'
+                ? JSON.stringify(endpoint.responseData, null, 2)
+                : endpoint.responseData;
+
+            const fullUrl = `${window.location.origin}/api-mock/serve${endpoint.path}`;
+
+            return `
+          <div class="endpoint-item">
+            <div class="endpoint-header">
+              <div class="endpoint-title">
+                <span class="endpoint-name">${escapeHtml(endpoint.name)}</span>
+                <span class="endpoint-path">${escapeHtml(endpoint.path)}</span>
+                <span class="badge ${statusBadge}">${endpoint.statusCode}</span>
+                ${endpoint.delayMs > 0 ? `<span class="badge badge-warning">${endpoint.delayMs}ms</span>` : ''}
+              </div>
+              <div class="endpoint-controls">
+                <label class="toggle">
+                  <input type="checkbox" ${endpoint.enabled ? 'checked' : ''}
+                    onchange="toggleEndpoint('${endpoint.id}', this.checked)">
+                  <span class="toggle-slider"></span>
+                </label>
+                <button class="btn btn-small" onclick="toggleDetails('${endpoint.id}')">Details</button>
+                <button class="btn btn-small btn-primary" onclick="editEndpoint('${endpoint.id}')">Edit</button>
+                <button class="btn btn-small btn-danger" onclick="deleteEndpoint('${endpoint.id}')">Delete</button>
+              </div>
+            </div>
+            <div class="endpoint-details" id="details-${endpoint.id}">
+              <div class="detail-grid">
+                <div class="detail-item">
+                  <div class="detail-label">Content Type</div>
+                  <div class="detail-value">${endpoint.contentType}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">Group ID</div>
+                  <div class="detail-value">${endpoint.groupId || '-'}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">Created</div>
+                  <div class="detail-value">${new Date(endpoint.createdAt).toLocaleString()}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">Updated</div>
+                  <div class="detail-value">${new Date(endpoint.updatedAt).toLocaleString()}</div>
+                </div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-label">Full URL
+                  <button class="copy-btn" onclick="copyToClipboard('${fullUrl}')">Copy</button>
+                </div>
+                <div class="detail-value" style="font-family: monospace; font-size: 12px;">${fullUrl}</div>
+              </div>
+              <div class="response-preview">
+                <strong>Response Preview:</strong>
+                <pre>${escapeHtml(responsePreview)}</pre>
+              </div>
+            </div>
+          </div>
+        `;
+          })
+          .join('');
+      }
+
+      // Toggle endpoint enabled/disabled
+      async function toggleEndpoint(id, enabled) {
+        try {
+          const response = await fetch(`${API_BASE}/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled }),
+          });
+
+          if (!response.ok) throw new Error('Failed to toggle endpoint');
+
+          await loadEndpoints();
+        } catch (error) {
+          console.error('Failed to toggle endpoint:', error);
+          alert('Failed to toggle endpoint');
+          await loadEndpoints();
+        }
+      }
+
+      // Toggle details visibility
+      function toggleDetails(id) {
+        const details = document.getElementById(`details-${id}`);
+        details.classList.toggle('open');
+      }
+
+      // Open create modal
+      function openCreateModal() {
+        document.getElementById('modal-title').textContent =
+          'Create New Endpoint';
+        document.getElementById('endpoint-form').reset();
+        document.getElementById('endpoint-id').value = '';
+        document.getElementById('endpoint-enabled').checked = true;
+        document.getElementById('error-container').innerHTML = '';
+        document.getElementById('endpoint-modal').classList.add('open');
+      }
+
+      // Edit endpoint
+      function editEndpoint(id) {
+        const endpoint = endpoints.find((e) => e.id === id);
+        if (!endpoint) return;
+
+        document.getElementById('modal-title').textContent = 'Edit Endpoint';
+        document.getElementById('endpoint-id').value = endpoint.id;
+        document.getElementById('endpoint-name').value = endpoint.name;
+        document.getElementById('endpoint-path').value = endpoint.path;
+        document.getElementById('endpoint-group').value =
+          endpoint.groupId || '';
+        document.getElementById('endpoint-content-type').value =
+          endpoint.contentType;
+        document.getElementById('endpoint-status').value = endpoint.statusCode;
+        document.getElementById('endpoint-delay').value = endpoint.delayMs;
+        document.getElementById('endpoint-enabled').checked = endpoint.enabled;
+
+        const responseData =
+          typeof endpoint.responseData === 'object'
+            ? JSON.stringify(endpoint.responseData, null, 2)
+            : endpoint.responseData;
+        document.getElementById('endpoint-response').value = responseData;
+
+        document.getElementById('error-container').innerHTML = '';
+        document.getElementById('endpoint-modal').classList.add('open');
+      }
+
+      // Close modal
+      function closeModal() {
+        document.getElementById('endpoint-modal').classList.remove('open');
+      }
+
+      // Handle form submit
+      document
+        .getElementById('endpoint-form')
+        .addEventListener('submit', async (e) => {
+          e.preventDefault();
+
+          const id = document.getElementById('endpoint-id').value;
+          const data = {
+            name: document.getElementById('endpoint-name').value,
+            path: document.getElementById('endpoint-path').value,
+            groupId:
+              document.getElementById('endpoint-group').value || undefined,
+            contentType: document.getElementById('endpoint-content-type').value,
+            statusCode: parseInt(
+              document.getElementById('endpoint-status').value
+            ),
+            delayMs: parseInt(document.getElementById('endpoint-delay').value),
+            enabled: document.getElementById('endpoint-enabled').checked,
+            responseData: document.getElementById('endpoint-response').value,
+          };
+
+          // Try to parse as JSON if content type is JSON
+          if (data.contentType === 'application/json') {
+            try {
+              data.responseData = JSON.parse(data.responseData);
+            } catch (error) {
+              showError('Invalid JSON in response data');
+              return;
+            }
+          }
+
+          try {
+            const url = id ? `${API_BASE}/${id}` : API_BASE;
+            const method = id ? 'PATCH' : 'POST';
+
+            const response = await fetch(url, {
+              method,
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(data),
+            });
+
+            if (!response.ok) {
+              const error = await response.json();
+              throw new Error(error.error || 'Failed to save endpoint');
+            }
+
+            closeModal();
+            await loadEndpoints();
+          } catch (error) {
+            showError(error.message);
+          }
+        });
+
+      // Delete endpoint
+      async function deleteEndpoint(id) {
+        if (!confirm('Are you sure you want to delete this endpoint?')) return;
+
+        try {
+          const response = await fetch(`${API_BASE}/${id}`, {
+            method: 'DELETE',
+          });
+
+          if (!response.ok) throw new Error('Failed to delete endpoint');
+
+          await loadEndpoints();
+        } catch (error) {
+          console.error('Failed to delete endpoint:', error);
+          alert('Failed to delete endpoint');
+        }
+      }
+
+      // Show error in modal
+      function showError(message) {
+        document.getElementById('error-container').innerHTML = `
+        <div class="error-message">${escapeHtml(message)}</div>
+      `;
+      }
+
+      // Copy to clipboard
+      function copyToClipboard(text) {
+        navigator.clipboard
+          .writeText(text)
+          .then(() => {
+            alert('Copied to clipboard!');
+          })
+          .catch((err) => {
+            console.error('Failed to copy:', err);
+          });
+      }
+
+      // Escape HTML
+      function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      // Close modal on outside click
+      document
+        .getElementById('endpoint-modal')
+        .addEventListener('click', (e) => {
+          if (e.target.id === 'endpoint-modal') {
+            closeModal();
+          }
+        });
+
+      // Load on page load
+      loadEndpoints();
+    </script>
+  </body>
+</html>

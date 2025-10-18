@@ -6,6 +6,10 @@ import { RssController } from './controllers/RssController.js';
 import { FeedController } from './controllers/FeedController.js';
 import { RssService } from '../application/services/RssService.js';
 import { InMemoryFeedRepository } from '../infrastructure/repositories/InMemoryFeedRepository.js';
+import { MockManagementController } from './controllers/MockManagementController.js';
+import { MockApiController } from './controllers/MockApiController.js';
+import { MockEndpointService } from '../application/services/MockEndpointService.js';
+import { SqliteMockEndpointRepository } from '../infrastructure/repositories/SqliteMockEndpointRepository.js';
 import pino from 'pino';
 
 const app = express();
@@ -21,11 +25,23 @@ const logger = pino({
   },
 });
 
+// Middleware
+app.use(express.json());
+
 // Dependency Injection
 const feedRepository = new InMemoryFeedRepository();
 const rssService = new RssService(feedRepository);
 const rssController = new RssController(rssService);
 const feedController = new FeedController(feedRepository, logger);
+
+// Mock API Dependency Injection
+const mockEndpointRepository = new SqliteMockEndpointRepository(logger);
+const mockEndpointService = new MockEndpointService(mockEndpointRepository);
+const mockManagementController = new MockManagementController(
+  mockEndpointService,
+  logger
+);
+const mockApiController = new MockApiController(mockEndpointService, logger);
 
 // Resolve public directory relative to this module so the app works
 // when run from `dist` (`node dist/presentation/server.js`) or from
@@ -64,6 +80,29 @@ app.get('/api/feed/merge', (req, res) =>
 app.get('/api/feed/enhance', (req, res) =>
   feedController.getEnhancedFeed(req, res)
 );
+
+// Mock API Management Routes
+app.get('/api-mock/endpoints', (req, res) =>
+  mockManagementController.getAll(req, res)
+);
+app.get('/api-mock/endpoints/:id', (req, res) =>
+  mockManagementController.getById(req, res)
+);
+app.post('/api-mock/endpoints', (req, res) =>
+  mockManagementController.create(req, res)
+);
+app.patch('/api-mock/endpoints/:id', (req, res) =>
+  mockManagementController.update(req, res)
+);
+app.delete('/api-mock/endpoints/:id', (req, res) =>
+  mockManagementController.delete(req, res)
+);
+app.get('/api-mock/stats', (req, res) =>
+  mockManagementController.getStats(req, res)
+);
+
+// Mock API Serve Route (wildcard must be last)
+app.all('/api-mock/serve/*', (req, res) => mockApiController.serve(req, res));
 
 app.get('/health', (req, res) => {
   const stats = feedRepository.getStats();
