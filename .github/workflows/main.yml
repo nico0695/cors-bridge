@@ -21,15 +21,31 @@ jobs:
     steps:
       - name: Deploy using ssh
         uses: appleboy/ssh-action@master
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          DEFAULT_ADMIN_NAME: ${{ secrets.DEFAULT_ADMIN_NAME }}
+          DEFAULT_ADMIN_PASSWORD: ${{ secrets.DEFAULT_ADMIN_PASSWORD }}
+          DEFAULT_ADMIN_EMAIL: ${{ secrets.DEFAULT_ADMIN_EMAIL }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
+          envs: JWT_SECRET,DEFAULT_ADMIN_NAME,DEFAULT_ADMIN_PASSWORD,DEFAULT_ADMIN_EMAIL
           script: |
             cd /app/cors-bridge/
             git pull
-            docker stop cors-bridge
-            docker rm cors-bridge
+            docker stop cors-bridge || true
+            docker rm cors-bridge || true
+            docker volume create cors_bridge_data || true
             docker build -t cors-bridge .
-            docker run -d --name cors-bridge -p 8081:8080 cors-bridge
+            docker run -d --name cors-bridge \
+              --restart unless-stopped \
+              -p 8081:8080 \
+              -v cors_bridge_data:/app/data \
+              -e NODE_ENV=production \
+              -e JWT_SECRET=$JWT_SECRET \
+              -e DEFAULT_ADMIN_NAME=$DEFAULT_ADMIN_NAME \
+              -e DEFAULT_ADMIN_PASSWORD=$DEFAULT_ADMIN_PASSWORD \
+              -e DEFAULT_ADMIN_EMAIL=$DEFAULT_ADMIN_EMAIL \
+              cors-bridge
