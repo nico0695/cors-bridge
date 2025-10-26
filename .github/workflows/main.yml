@@ -37,12 +37,12 @@ jobs:
             git pull
             docker stop cors-bridge || true
             docker rm cors-bridge || true
-            docker volume create cors_bridge_data || true
+
             docker build -t cors-bridge .
             docker run -d --name cors-bridge \
               --restart unless-stopped \
               -p 8081:8080 \
-              -v cors_bridge_data:/app/data \
+              -v /app/database:/app/data \
               -e NODE_ENV=production \
               -e JWT_SECRET=$JWT_SECRET \
               -e DEFAULT_ADMIN_NAME=$DEFAULT_ADMIN_NAME \
