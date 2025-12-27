@@ -21,6 +21,10 @@ import { SqliteUserRepository } from '../infrastructure/repositories/SqliteUserR
 import { AuthController } from './controllers/AuthController.js';
 import { UserController } from './controllers/UserController.js';
 import { createAuthMiddleware } from './middleware/authMiddleware.js';
+import {
+  createRequireRole,
+  createRequireAnyRole,
+} from './middleware/permissionMiddleware.js';
 import pino from 'pino';
 
 const app = express();
@@ -102,6 +106,11 @@ const userService = new UserService(userRepository, jwtSecret ?? 'change-me');
 const authController = new AuthController(userService, logger);
 const userController = new UserController(userService, logger);
 const authMiddleware = createAuthMiddleware(userService, logger);
+const requireAdmin = createRequireRole('admin', logger);
+const requireAuthenticatedUser = createRequireAnyRole(
+  ['admin', 'user'],
+  logger
+);
 
 const ensureDefaultAdminUser = (): void => {
   const defaultName = process.env.DEFAULT_ADMIN_NAME ?? 'admin';
@@ -121,6 +130,7 @@ const ensureDefaultAdminUser = (): void => {
         password: defaultPassword,
         email: defaultEmail,
         status: 'enabled',
+        role: 'admin',
       });
       logger.info(
         { name: defaultName },
@@ -130,6 +140,7 @@ const ensureDefaultAdminUser = (): void => {
       userService.updateUser(existing.id, {
         password: defaultPassword,
         status: 'enabled',
+        role: 'admin',
         ...(defaultEmail ? { email: defaultEmail } : {}),
       });
       logger.info(
@@ -172,14 +183,23 @@ app.get('/', (req, res) => {
 app.get('/rss', (req, res) => rssController.getFeed(req, res));
 
 // New endpoints for feed transformation and enhancement
-app.get('/api/feed/transform', (req, res) =>
-  feedController.getTransformedFeed(req, res)
+app.get(
+  '/api/feed/transform',
+  authMiddleware.requireAuth,
+  requireAuthenticatedUser,
+  (req, res) => feedController.getTransformedFeed(req, res)
 );
-app.get('/api/feed/merge', (req, res) =>
-  feedController.getMergedFeeds(req, res)
+app.get(
+  '/api/feed/merge',
+  authMiddleware.requireAuth,
+  requireAuthenticatedUser,
+  (req, res) => feedController.getMergedFeeds(req, res)
 );
-app.get('/api/feed/enhance', (req, res) =>
-  feedController.getEnhancedFeed(req, res)
+app.get(
+  '/api/feed/enhance',
+  authMiddleware.requireAuth,
+  requireAuthenticatedUser,
+  (req, res) => feedController.getEnhancedFeed(req, res)
 );
 
 // Authentication Routes
@@ -189,63 +209,109 @@ app.post('/api-auth/refresh', (req, res) => authController.refresh(req, res));
 // Public registration route (users start as blocked)
 app.post('/api-auth/register', (req, res) => userController.register(req, res));
 
-// User Management Routes
-app.get('/api-auth/users', authMiddleware.requireAuth, (req, res) =>
-  userController.list(req, res)
+// User Management Routes (Admin Only)
+app.get(
+  '/api-auth/users',
+  authMiddleware.requireAuth,
+  requireAdmin,
+  (req, res) => userController.list(req, res)
 );
 app.post(
   '/api-auth/users',
-  authMiddleware.attachAuthUserIfPresent,
+  authMiddleware.requireAuth,
+  requireAdmin,
   (req, res) => userController.create(req, res)
 );
-app.patch('/api-auth/users/:id', authMiddleware.requireAuth, (req, res) =>
-  userController.update(req, res)
+app.patch(
+  '/api-auth/users/:id',
+  authMiddleware.requireAuth,
+  requireAdmin,
+  (req, res) => userController.update(req, res)
 );
-app.delete('/api-auth/users/:id', authMiddleware.requireAuth, (req, res) =>
-  userController.delete(req, res)
+app.delete(
+  '/api-auth/users/:id',
+  authMiddleware.requireAuth,
+  requireAdmin,
+  (req, res) => userController.delete(req, res)
 );
 
-// Mock API Management Routes
-app.get('/api-mock/endpoints', (req, res) =>
-  mockManagementController.getAll(req, res)
+// Mock API Management Routes (Admin + User)
+app.get(
+  '/api-mock/endpoints',
+  authMiddleware.requireAuth,
+  requireAuthenticatedUser,
+  (req, res) => mockManagementController.getAll(req, res)
 );
-app.get('/api-mock/endpoints/:id', (req, res) =>
-  mockManagementController.getById(req, res)
+app.get(
+  '/api-mock/endpoints/:id',
+  authMiddleware.requireAuth,
+  requireAuthenticatedUser,
+  (req, res) => mockManagementController.getById(req, res)
 );
-app.post('/api-mock/endpoints', (req, res) =>
-  mockManagementController.create(req, res)
+app.post(
+  '/api-mock/endpoints',
+  authMiddleware.requireAuth,
+  requireAuthenticatedUser,
+  (req, res) => mockManagementController.create(req, res)
 );
-app.patch('/api-mock/endpoints/:id', (req, res) =>
-  mockManagementController.update(req, res)
+app.patch(
+  '/api-mock/endpoints/:id',
+  authMiddleware.requireAuth,
+  requireAuthenticatedUser,
+  (req, res) => mockManagementController.update(req, res)
 );
-app.delete('/api-mock/endpoints/:id', (req, res) =>
-  mockManagementController.delete(req, res)
+app.delete(
+  '/api-mock/endpoints/:id',
+  authMiddleware.requireAuth,
+  requireAuthenticatedUser,
+  (req, res) => mockManagementController.delete(req, res)
 );
-app.get('/api-mock/stats', (req, res) =>
-  mockManagementController.getStats(req, res)
+app.get(
+  '/api-mock/stats',
+  authMiddleware.requireAuth,
+  requireAuthenticatedUser,
+  (req, res) => mockManagementController.getStats(req, res)
 );
 
 // Mock API Serve Route (wildcard must be last)
 app.all('/api-mock/serve/*', (req, res) => mockApiController.serve(req, res));
 
-// Proxy API Management Routes
-app.get('/api-proxy/endpoints', (req, res) =>
-  proxyManagementController.getAll(req, res)
+// Proxy API Management Routes (Admin + User)
+app.get(
+  '/api-proxy/endpoints',
+  authMiddleware.requireAuth,
+  requireAuthenticatedUser,
+  (req, res) => proxyManagementController.getAll(req, res)
 );
-app.get('/api-proxy/endpoints/:id', (req, res) =>
-  proxyManagementController.getById(req, res)
+app.get(
+  '/api-proxy/endpoints/:id',
+  authMiddleware.requireAuth,
+  requireAuthenticatedUser,
+  (req, res) => proxyManagementController.getById(req, res)
 );
-app.post('/api-proxy/endpoints', (req, res) =>
-  proxyManagementController.create(req, res)
+app.post(
+  '/api-proxy/endpoints',
+  authMiddleware.requireAuth,
+  requireAuthenticatedUser,
+  (req, res) => proxyManagementController.create(req, res)
 );
-app.patch('/api-proxy/endpoints/:id', (req, res) =>
-  proxyManagementController.update(req, res)
+app.patch(
+  '/api-proxy/endpoints/:id',
+  authMiddleware.requireAuth,
+  requireAuthenticatedUser,
+  (req, res) => proxyManagementController.update(req, res)
 );
-app.delete('/api-proxy/endpoints/:id', (req, res) =>
-  proxyManagementController.delete(req, res)
+app.delete(
+  '/api-proxy/endpoints/:id',
+  authMiddleware.requireAuth,
+  requireAuthenticatedUser,
+  (req, res) => proxyManagementController.delete(req, res)
 );
-app.get('/api-proxy/stats', (req, res) =>
-  proxyManagementController.getStats(req, res)
+app.get(
+  '/api-proxy/stats',
+  authMiddleware.requireAuth,
+  requireAuthenticatedUser,
+  (req, res) => proxyManagementController.getStats(req, res)
 );
 
 // Proxy API Serve Route (wildcard must be last)

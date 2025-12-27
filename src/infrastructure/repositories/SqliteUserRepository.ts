@@ -17,6 +17,7 @@ interface UserRow {
   password_hash: string;
   password_salt: string;
   status: string;
+  role: string;
   created_at: number;
   updated_at: number;
 }
@@ -51,7 +52,25 @@ export class SqliteUserRepository implements UserRepository {
       );
       CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
     `);
+    this.migrateDatabase();
     this.logger.info('SQLite database initialized for users');
+  }
+
+  private migrateDatabase(): void {
+    const columns = this.db.pragma("table_info('users')") as Array<{
+      name: string;
+    }>;
+    const hasRoleColumn = columns.some((col) => col.name === 'role');
+
+    if (!hasRoleColumn) {
+      this.logger.info('Migrating users table to add role column...');
+      this.db.exec(`
+        ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'admin';
+      `);
+      this.logger.info(
+        'Migration completed: All existing users set to admin role'
+      );
+    }
   }
 
   private rowToEntity(row: UserRow): User {
@@ -62,6 +81,7 @@ export class SqliteUserRepository implements UserRepository {
       passwordHash: row.password_hash,
       passwordSalt: row.password_salt,
       status: row.status as User['status'],
+      role: row.role as User['role'],
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at),
     };
@@ -91,8 +111,8 @@ export class SqliteUserRepository implements UserRepository {
 
     const stmt = this.db.prepare(`
       INSERT INTO users (
-        id, name, email, password_hash, password_salt, status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        id, name, email, password_hash, password_salt, status, role, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
@@ -102,11 +122,12 @@ export class SqliteUserRepository implements UserRepository {
       data.passwordHash,
       data.passwordSalt,
       data.status,
+      data.role,
       now,
       now
     );
 
-    this.logger.info({ id, name: data.name }, 'User created');
+    this.logger.info({ id, name: data.name, role: data.role }, 'User created');
     return this.findById(id)!;
   }
 
@@ -138,6 +159,10 @@ export class SqliteUserRepository implements UserRepository {
     if (data.status !== undefined) {
       updates.push('status = ?');
       values.push(data.status);
+    }
+    if (data.role !== undefined) {
+      updates.push('role = ?');
+      values.push(data.role);
     }
 
     if (updates.length === 0) {

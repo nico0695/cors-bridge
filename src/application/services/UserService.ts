@@ -7,6 +7,7 @@ import type {
   UpdateUserInput,
   UpdateUserRecord,
   User,
+  UserRole,
   UserStatus,
 } from '../../domain/User.js';
 
@@ -21,6 +22,7 @@ interface VerifiedTokenPayload extends jwt.JwtPayload {
   sub: string;
   type: TokenType;
   name?: string;
+  role?: UserRole;
 }
 
 export interface AuthTokens {
@@ -71,11 +73,13 @@ export class UserService {
 
     const { hash, salt } = this.hashPassword(input.password);
     const status = this.normalizeStatus(input.status);
+    const role = this.normalizeRole(input.role);
 
     const user = this.repository.save({
       name: normalizedName,
       email: this.normalizeEmail(input.email),
       status,
+      role,
       passwordHash: hash,
       passwordSalt: salt,
     });
@@ -114,6 +118,10 @@ export class UserService {
 
     if (input.status !== undefined) {
       updates.status = this.normalizeStatus(input.status);
+    }
+
+    if (input.role !== undefined) {
+      updates.role = this.normalizeRole(input.role);
     }
 
     if (input.password !== undefined) {
@@ -183,7 +191,7 @@ export class UserService {
 
   private generateTokens(user: User): AuthTokens {
     const accessToken = jwt.sign(
-      { sub: user.id, name: user.name, type: 'access' },
+      { sub: user.id, name: user.name, role: user.role, type: 'access' },
       this.jwtSecret,
       { expiresIn: ACCESS_TOKEN_TTL }
     );
@@ -259,12 +267,23 @@ export class UserService {
     return status;
   }
 
+  private normalizeRole(role?: UserRole): UserRole {
+    if (!role) {
+      return 'user';
+    }
+    if (role !== 'admin' && role !== 'user') {
+      throw new Error('Invalid user role');
+    }
+    return role;
+  }
+
   private toPublicUser(user: User): PublicUser {
     return {
       id: user.id,
       name: user.name,
       email: user.email ?? undefined,
       status: user.status,
+      role: user.role,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };

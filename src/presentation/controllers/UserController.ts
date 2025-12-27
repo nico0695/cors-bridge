@@ -1,10 +1,18 @@
 import type { Request, Response } from 'express';
 import type { Logger } from 'pino';
 import type { UserService } from '../../application/services/UserService.js';
-import type { UpdateUserInput, UserStatus } from '../../domain/User.js';
+import type {
+  UpdateUserInput,
+  UserRole,
+  UserStatus,
+} from '../../domain/User.js';
 
 const isValidStatus = (value: unknown): value is UserStatus => {
   return value === 'enabled' || value === 'blocked';
+};
+
+const isValidRole = (value: unknown): value is UserRole => {
+  return value === 'admin' || value === 'user';
 };
 
 export class UserController {
@@ -52,7 +60,7 @@ export class UserController {
 
   create = (req: Request, res: Response): void => {
     try {
-      const { name, password, email, status } = req.body ?? {};
+      const { name, password, email, status, role } = req.body ?? {};
 
       if (this.userService.hasUsers() && !req.authUser) {
         res.status(401).json({ error: 'Unauthorized' });
@@ -71,11 +79,17 @@ export class UserController {
         return;
       }
 
+      if (role !== undefined && !isValidRole(role)) {
+        res.status(400).json({ error: 'Invalid user role' });
+        return;
+      }
+
       const user = this.userService.createUser({
         name,
         password,
         email: typeof email === 'string' ? email : undefined,
         status,
+        role,
       });
 
       res.status(201).json(user);
@@ -90,7 +104,7 @@ export class UserController {
   update = (req: Request, res: Response): void => {
     try {
       const { id } = req.params;
-      const { name, password, email, status } = req.body ?? {};
+      const { name, password, email, status, role } = req.body ?? {};
 
       const updates: UpdateUserInput = {};
 
@@ -127,6 +141,14 @@ export class UserController {
           return;
         }
         updates.status = status;
+      }
+
+      if (role !== undefined) {
+        if (!isValidRole(role)) {
+          res.status(400).json({ error: 'Invalid user role' });
+          return;
+        }
+        updates.role = role;
       }
 
       const updated = this.userService.updateUser(id, updates);

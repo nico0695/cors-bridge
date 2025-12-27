@@ -1,12 +1,14 @@
 import type { NextFunction, Request, Response } from 'express';
 import type { Logger } from 'pino';
 import type { UserService } from '../../application/services/UserService.js';
+import type { UserRole } from '../../domain/User.js';
 
 declare module 'express-serve-static-core' {
   interface Request {
     authUser?: {
       id: string;
       name: string;
+      role?: UserRole;
     };
   }
 }
@@ -46,7 +48,7 @@ export const createAuthMiddleware = (
 
     try {
       const user = userService.verifyAccessToken(token);
-      req.authUser = { id: user.id, name: user.name };
+      req.authUser = { id: user.id, name: user.name, role: user.role };
     } catch (error) {
       logger.warn({ error }, 'Failed to attach auth user from token');
     } finally {
