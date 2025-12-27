@@ -195,50 +195,80 @@ export class ProxyApiController {
     const contentType = upstreamResponse.headers.get('content-type');
     const contentLength = upstreamResponse.headers.get('content-length');
 
-    const maxCacheSize = 10 * 1024 * 1024; // 10MB threshold
+    // Thresholds for buffering vs streaming
+    const maxCacheSize = 10 * 1024 * 1024; // 10MB - max size for caching
+    const maxBufferSize = 1 * 1024 * 1024; // 1MB - always buffer small responses for reliability
     const responseSize = contentLength ? parseInt(contentLength, 10) : 0;
-    const shouldBuffer =
+
+    // Determine if we should buffer the response
+    const shouldCache =
       useCache &&
       upstreamResponse.status >= 200 &&
       upstreamResponse.status < 300 &&
       responseSize > 0 &&
       responseSize < maxCacheSize;
 
+    const shouldBuffer =
+      shouldCache ||
+      (responseSize > 0 && responseSize < maxBufferSize) ||
+      responseSize === 0; // Always buffer when size is unknown (safety)
+
     if (shouldBuffer) {
       this.logger.info(
-        { targetUrl, size: responseSize },
-        'Buffering response for cache'
+        {
+          targetUrl,
+          size: responseSize || 'unknown',
+          willCache: shouldCache,
+        },
+        'Buffering response'
       );
 
       const responseData = Buffer.from(await upstreamResponse.arrayBuffer());
 
-      this.cache.set(targetUrl, {
-        status: upstreamResponse.status,
-        headers: responseHeaders,
-        body: responseData,
-        contentType,
-        cachedAt: Date.now(),
-      });
+      if (shouldCache) {
+        this.cache.set(targetUrl, {
+          status: upstreamResponse.status,
+          headers: responseHeaders,
+          body: responseData,
+          contentType,
+          cachedAt: Date.now(),
+        });
+      }
 
       res.status(upstreamResponse.status).send(responseData);
     } else {
+      // Stream large files (> 1MB)
       this.logger.info(
         {
           targetUrl,
-          size: contentLength || 'unknown',
-          reason: !useCache
-            ? 'caching disabled'
-            : responseSize >= maxCacheSize
-              ? 'too large for cache'
-              : 'non-2xx status',
+          size: contentLength,
         },
-        'Streaming response directly to client'
+        'Streaming large response directly to client'
       );
 
       res.status(upstreamResponse.status);
 
       if (upstreamResponse.body) {
-        upstreamResponse.body.pipe(res);
+        // Proper stream handling with error management
+        upstreamResponse.body
+          .on('error', (error: Error) => {
+            this.logger.error(
+              { targetUrl, error: error.message },
+              'Stream error during proxying'
+            );
+            if (!res.headersSent) {
+              res.status(502).end();
+            } else {
+              res.end();
+            }
+          })
+          .pipe(res)
+          .on('error', (error: Error) => {
+            this.logger.error(
+              { targetUrl, error: error.message },
+              'Response stream error'
+            );
+          });
       } else {
         res.end();
       }
