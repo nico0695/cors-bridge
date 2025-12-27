@@ -3,6 +3,7 @@ import type { ProxyEndpointService } from '../../application/services/ProxyEndpo
 import type { Logger } from 'pino';
 import fetch from 'node-fetch';
 import type { ProxyResponseCache } from '../../infrastructure/cache/ProxyResponseCache.js';
+import { extractAndValidateUrl } from '../utils/urlExtractor.js';
 
 export class ProxyApiController {
   constructor(
@@ -37,20 +38,16 @@ export class ProxyApiController {
     req: Request,
     res: Response
   ): Promise<void> => {
-    const url = req.query.url;
+    const { url, error } = extractAndValidateUrl(req);
 
-    if (!url || typeof url !== 'string') {
-      this.logger.warn('Direct proxy called without ?url parameter');
+    if (error || !url) {
+      this.logger.warn({ error }, 'Direct proxy called with invalid URL');
       res.status(400).json({
-        error: 'Missing ?url parameter',
-        usage: 'Use /api-proxy/serve?url=https://example.com',
-      });
-      return;
-    }
-
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      res.status(400).json({
-        error: 'URL must start with http:// or https://',
+        error: error || 'Invalid URL parameter',
+        usage:
+          'Use /api-proxy/serve?url=https://example.com (url must be the last query parameter)',
+        example:
+          '/api-proxy/serve?url=https://api.example.com/users?id=1&status=active',
       });
       return;
     }
@@ -98,16 +95,11 @@ export class ProxyApiController {
       return;
     }
 
-    const queryUrl = req.query.url;
     let targetUrl: string;
 
-    if (queryUrl && typeof queryUrl === 'string') {
-      if (!queryUrl.startsWith('http://') && !queryUrl.startsWith('https://')) {
-        res.status(400).json({
-          error: 'URL must start with http:// or https://',
-        });
-        return;
-      }
+    const { url: queryUrl, error: urlError } = extractAndValidateUrl(req);
+
+    if (queryUrl) {
       targetUrl = queryUrl;
       this.logger.info(
         {
@@ -129,12 +121,13 @@ export class ProxyApiController {
       );
     } else {
       this.logger.warn(
-        { path: requestPath },
+        { path: requestPath, urlError },
         'Endpoint requires URL but none provided'
       );
       res.status(400).json({
-        error: 'URL required',
-        usage: `Use /api-proxy/serve${requestPath}?url=https://example.com`,
+        error: urlError || 'URL required',
+        usage: `Use /api-proxy/serve${requestPath}?url=https://example.com (url must be the last query parameter)`,
+        example: `/api-proxy/serve${requestPath}?url=https://api.example.com/users?id=1&status=active`,
       });
       return;
     }
