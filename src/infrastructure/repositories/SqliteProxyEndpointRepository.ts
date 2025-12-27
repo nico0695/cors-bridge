@@ -14,11 +14,12 @@ interface ProxyEndpointRow {
   id: string;
   name: string;
   path: string;
-  base_url: string;
+  base_url: string | null;
   group_id: string | null;
   enabled: number;
   status_code_override: number | null;
   delay_ms: number;
+  use_cache: number;
   created_at: number;
   updated_at: number;
 }
@@ -40,23 +41,94 @@ export class SqliteProxyEndpointRepository implements ProxyEndpointRepository {
   }
 
   private initializeDatabase(): void {
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS proxy_endpoints (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        path TEXT NOT NULL UNIQUE,
-        base_url TEXT NOT NULL,
-        group_id TEXT,
-        enabled INTEGER DEFAULT 1,
-        status_code_override INTEGER,
-        delay_ms INTEGER DEFAULT 0,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
+    const tableExists = this.db
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='proxy_endpoints'"
+      )
+      .get();
+
+    if (!tableExists) {
+      this.db.exec(`
+        CREATE TABLE proxy_endpoints (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          path TEXT NOT NULL UNIQUE,
+          base_url TEXT,
+          group_id TEXT,
+          enabled INTEGER DEFAULT 1,
+          status_code_override INTEGER,
+          delay_ms INTEGER DEFAULT 0,
+          use_cache INTEGER DEFAULT 0,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        );
+        CREATE INDEX idx_proxy_path ON proxy_endpoints(path);
+        CREATE INDEX idx_proxy_enabled ON proxy_endpoints(enabled);
+      `);
+      this.logger.info(
+        'SQLite database initialized for proxy endpoints (new schema)'
       );
-      CREATE INDEX IF NOT EXISTS idx_proxy_path ON proxy_endpoints(path);
-      CREATE INDEX IF NOT EXISTS idx_proxy_enabled ON proxy_endpoints(enabled);
-    `);
-    this.logger.info('SQLite database initialized for proxy endpoints');
+      return;
+    }
+
+    const tableInfo = this.db.pragma('table_info(proxy_endpoints)') as Array<{
+      name: string;
+      type: string;
+      notnull: number;
+    }>;
+    const columns = tableInfo.map((col) => col.name);
+
+    const needsUseCacheMigration = !columns.includes('use_cache');
+    const baseUrlColumn = tableInfo.find((col) => col.name === 'base_url');
+    const needsBaseUrlNullable = baseUrlColumn && baseUrlColumn.notnull === 1;
+
+    if (needsUseCacheMigration || needsBaseUrlNullable) {
+      this.logger.info(
+        'Migrating proxy_endpoints table to support optional baseUrl and caching'
+      );
+
+      this.db.exec(`
+        -- Create new table with updated schema
+        CREATE TABLE proxy_endpoints_new (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          path TEXT NOT NULL UNIQUE,
+          base_url TEXT,
+          group_id TEXT,
+          enabled INTEGER DEFAULT 1,
+          status_code_override INTEGER,
+          delay_ms INTEGER DEFAULT 0,
+          use_cache INTEGER DEFAULT 0,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        );
+
+        -- Copy existing data
+        INSERT INTO proxy_endpoints_new
+        SELECT
+          id, name, path, base_url, group_id, enabled,
+          status_code_override, delay_ms,
+          ${needsUseCacheMigration ? '0' : 'use_cache'},
+          created_at, updated_at
+        FROM proxy_endpoints;
+
+        -- Drop old table
+        DROP TABLE proxy_endpoints;
+
+        -- Rename new table
+        ALTER TABLE proxy_endpoints_new RENAME TO proxy_endpoints;
+
+        -- Recreate indexes
+        CREATE INDEX idx_proxy_path ON proxy_endpoints(path);
+        CREATE INDEX idx_proxy_enabled ON proxy_endpoints(enabled);
+      `);
+
+      this.logger.info('Migration completed successfully');
+    } else {
+      this.logger.info(
+        'Proxy endpoints table schema is up to date, no migration needed'
+      );
+    }
   }
 
   private rowToEntity(row: ProxyEndpointRow): ProxyEndpoint {
@@ -64,11 +136,12 @@ export class SqliteProxyEndpointRepository implements ProxyEndpointRepository {
       id: row.id,
       name: row.name,
       path: row.path,
-      baseUrl: row.base_url,
+      baseUrl: row.base_url || undefined,
       groupId: row.group_id || undefined,
       enabled: row.enabled === 1,
       statusCodeOverride: row.status_code_override || undefined,
       delayMs: row.delay_ms,
+      useCache: row.use_cache === 1,
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at),
     };
@@ -103,19 +176,20 @@ export class SqliteProxyEndpointRepository implements ProxyEndpointRepository {
     const stmt = this.db.prepare(`
       INSERT INTO proxy_endpoints (
         id, name, path, base_url, group_id, enabled,
-        status_code_override, delay_ms, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        status_code_override, delay_ms, use_cache, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
       id,
       dto.name,
       dto.path,
-      dto.baseUrl,
+      dto.baseUrl || null,
       dto.groupId || null,
       dto.enabled !== false ? 1 : 0,
       dto.statusCodeOverride || null,
       dto.delayMs || 0,
+      dto.useCache === true ? 1 : 0,
       now,
       now
     );
@@ -160,6 +234,10 @@ export class SqliteProxyEndpointRepository implements ProxyEndpointRepository {
     if (dto.delayMs !== undefined) {
       updates.push('delay_ms = ?');
       values.push(dto.delayMs);
+    }
+    if (dto.useCache !== undefined) {
+      updates.push('use_cache = ?');
+      values.push(dto.useCache ? 1 : 0);
     }
 
     if (updates.length === 0) {

@@ -15,6 +15,7 @@ import { ProxyManagementController } from './controllers/ProxyManagementControll
 import { ProxyApiController } from './controllers/ProxyApiController.js';
 import { ProxyEndpointService } from '../application/services/ProxyEndpointService.js';
 import { SqliteProxyEndpointRepository } from '../infrastructure/repositories/SqliteProxyEndpointRepository.js';
+import { ProxyResponseCache } from '../infrastructure/cache/ProxyResponseCache.js';
 import { UserService } from '../application/services/UserService.js';
 import { SqliteUserRepository } from '../infrastructure/repositories/SqliteUserRepository.js';
 import { AuthController } from './controllers/AuthController.js';
@@ -78,11 +79,16 @@ const mockApiController = new MockApiController(mockEndpointService, logger);
 // Proxy API Dependency Injection
 const proxyEndpointRepository = new SqliteProxyEndpointRepository(logger);
 const proxyEndpointService = new ProxyEndpointService(proxyEndpointRepository);
+const proxyResponseCache = new ProxyResponseCache(logger, 300, 100);
 const proxyManagementController = new ProxyManagementController(
   proxyEndpointService,
   logger
 );
-const proxyApiController = new ProxyApiController(proxyEndpointService, logger);
+const proxyApiController = new ProxyApiController(
+  proxyEndpointService,
+  logger,
+  proxyResponseCache
+);
 
 // User/Auth Dependency Injection
 const userRepository = new SqliteUserRepository(logger);

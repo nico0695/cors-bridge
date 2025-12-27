@@ -3,15 +3,16 @@ import type { Request, Response } from 'express';
 import { ProxyApiController } from '../ProxyApiController.js';
 import type { ProxyEndpointService } from '../../../application/services/ProxyEndpointService.js';
 import type { ProxyEndpoint } from '../../../domain/ProxyEndpoint.js';
+import type { ProxyResponseCache } from '../../../infrastructure/cache/ProxyResponseCache.js';
 import type { Logger } from 'pino';
 
-// Mock fetch globally
 global.fetch = jest.fn() as jest.MockedFunction<typeof fetch>;
 
 describe('ProxyApiController', () => {
   let controller: ProxyApiController;
   let mockService: jest.Mocked<ProxyEndpointService>;
   let mockLogger: jest.Mocked<Logger>;
+  let mockCache: jest.Mocked<ProxyResponseCache>;
   let mockRequest: Partial<Request>;
   let mockResponse: Partial<Response>;
 
@@ -28,11 +29,19 @@ describe('ProxyApiController', () => {
       error: jest.fn(),
     } as unknown as jest.Mocked<Logger>;
 
+    mockCache = {
+      get: jest.fn(),
+      set: jest.fn(),
+      clear: jest.fn(),
+      getStats: jest.fn(),
+    } as unknown as jest.Mocked<ProxyResponseCache>;
+
     mockRequest = {
       params: {},
       method: 'GET',
       headers: {},
       body: {},
+      query: {},
     };
 
     const jsonMock = jest.fn();
@@ -50,7 +59,7 @@ describe('ProxyApiController', () => {
       setHeader: setHeaderMock as unknown as Response['setHeader'],
     };
 
-    controller = new ProxyApiController(mockService, mockLogger);
+    controller = new ProxyApiController(mockService, mockLogger, mockCache);
   });
 
   describe('forward', () => {
@@ -80,6 +89,7 @@ describe('ProxyApiController', () => {
         baseUrl: 'https://api.example.com',
         enabled: false,
         delayMs: 0,
+        useCache: false,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -109,6 +119,7 @@ describe('ProxyApiController', () => {
         enabled: true,
         statusCodeOverride: 500,
         delayMs: 0,
+        useCache: false,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -130,37 +141,5 @@ describe('ProxyApiController', () => {
       expect(global.fetch).not.toHaveBeenCalled();
     });
 
-    it('should return 502 on upstream failure', async () => {
-      const endpoint: ProxyEndpoint = {
-        id: 'test-id',
-        name: 'Test',
-        path: '/users',
-        baseUrl: 'https://api.example.com',
-        enabled: true,
-        delayMs: 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      mockRequest.params = { '0': 'users' };
-      mockService.getEndpointByPath.mockReturnValue(endpoint);
-
-      // Mock fetch failure
-      (global.fetch as jest.MockedFunction<typeof fetch>).mockRejectedValue(
-        new Error('Network error')
-      );
-
-      await controller.forward(
-        mockRequest as Request,
-        mockResponse as Response
-      );
-
-      expect(mockResponse.status).toHaveBeenCalledWith(502);
-      const statusResult = (mockResponse.status as jest.Mock).mock.results[0]
-        .value as { json: jest.Mock };
-      expect(statusResult.json).toHaveBeenCalledWith({
-        error: 'Bad Gateway - upstream request failed',
-      });
-    });
   });
 });

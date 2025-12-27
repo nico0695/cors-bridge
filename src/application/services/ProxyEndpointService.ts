@@ -36,11 +36,13 @@ export class ProxyEndpointService {
       throw new Error(`Endpoint with path ${normalizedPath} already exists`);
     }
 
-    if (
-      !dto.baseUrl.startsWith('http://') &&
-      !dto.baseUrl.startsWith('https://')
-    ) {
-      throw new Error('Base URL must start with http:// or https://');
+    if (dto.baseUrl) {
+      if (
+        !dto.baseUrl.startsWith('http://') &&
+        !dto.baseUrl.startsWith('https://')
+      ) {
+        throw new Error('Base URL must start with http:// or https://');
+      }
     }
 
     if (
@@ -58,6 +60,7 @@ export class ProxyEndpointService {
     return this.repository.save({
       ...dto,
       path: normalizedPath,
+      useCache: dto.useCache || false,
     });
   }
 
