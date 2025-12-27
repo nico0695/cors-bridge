@@ -192,14 +192,26 @@ export class ProxyApiController {
     const responseHeaders: Record<string, string> = {};
     this.forwardResponseHeaders(upstreamResponse.headers, res, responseHeaders);
 
-    const responseData = Buffer.from(await upstreamResponse.arrayBuffer());
     const contentType = upstreamResponse.headers.get('content-type');
+    const contentLength = upstreamResponse.headers.get('content-length');
 
-    if (
+    const maxCacheSize = 10 * 1024 * 1024; // 10MB threshold
+    const responseSize = contentLength ? parseInt(contentLength, 10) : 0;
+    const shouldBuffer =
       useCache &&
       upstreamResponse.status >= 200 &&
-      upstreamResponse.status < 300
-    ) {
+      upstreamResponse.status < 300 &&
+      responseSize > 0 &&
+      responseSize < maxCacheSize;
+
+    if (shouldBuffer) {
+      this.logger.info(
+        { targetUrl, size: responseSize },
+        'Buffering response for cache'
+      );
+
+      const responseData = Buffer.from(await upstreamResponse.arrayBuffer());
+
       this.cache.set(targetUrl, {
         status: upstreamResponse.status,
         headers: responseHeaders,
@@ -207,9 +219,30 @@ export class ProxyApiController {
         contentType,
         cachedAt: Date.now(),
       });
-    }
 
-    res.status(upstreamResponse.status).send(responseData);
+      res.status(upstreamResponse.status).send(responseData);
+    } else {
+      this.logger.info(
+        {
+          targetUrl,
+          size: contentLength || 'unknown',
+          reason: !useCache
+            ? 'caching disabled'
+            : responseSize >= maxCacheSize
+              ? 'too large for cache'
+              : 'non-2xx status',
+        },
+        'Streaming response directly to client'
+      );
+
+      res.status(upstreamResponse.status);
+
+      if (upstreamResponse.body) {
+        upstreamResponse.body.pipe(res);
+      } else {
+        res.end();
+      }
+    }
   };
 
   private filterRequestHeaders(
