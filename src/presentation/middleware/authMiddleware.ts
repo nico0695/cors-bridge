@@ -32,14 +32,14 @@ export const createAuthMiddleware = (
     req: Request,
     res: Response,
     next: NextFunction
-  ) => void;
+  ) => Promise<void>;
   requireAuth: (req: Request, res: Response, next: NextFunction) => void;
 } => {
-  const attachAuthUserIfPresent = (
+  const attachAuthUserIfPresent = async (
     req: Request,
     _res: Response,
     next: NextFunction
-  ): void => {
+  ): Promise<void> => {
     const token = extractToken(req.headers.authorization);
     if (!token) {
       next();
@@ -47,7 +47,7 @@ export const createAuthMiddleware = (
     }
 
     try {
-      const user = userService.verifyAccessToken(token);
+      const user = await userService.verifyAccessToken(token);
       req.authUser = { id: user.id, name: user.name, role: user.role };
     } catch (error) {
       logger.warn({ error }, 'Failed to attach auth user from token');

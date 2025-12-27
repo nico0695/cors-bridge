@@ -65,7 +65,7 @@ export class ProxyApiController {
     req: Request,
     res: Response
   ): Promise<void> => {
-    const endpoint = this.service.getEndpointByPath(requestPath);
+    const endpoint = await this.service.getEndpointByPath(requestPath);
 
     if (!endpoint) {
       this.logger.warn({ requestPath }, 'Proxy endpoint not found');

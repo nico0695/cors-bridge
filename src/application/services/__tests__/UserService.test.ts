@@ -21,27 +21,30 @@ const createMockUser = (
   status: data.status,
   createdAt: timestamps.createdAt,
   updatedAt: timestamps.updatedAt,
+  role: 'admin'
 });
 
 class InMemoryUserRepository implements UserRepository {
   private users: User[] = [];
   private counter = 0;
 
-  findAll(): User[] {
+  async findAll(): Promise<User[]> {
     return [...this.users];
   }
 
-  findById(id: string): User | null {
+  async findById(id: string): Promise<User | null> {
     return this.users.find((user) => user.id === id) ?? null;
   }
 
-  findByName(name: string): User | null {
-    return this.users.find(
-      (user) => user.name.toLowerCase() === name.toLowerCase()
-    ) ?? null;
+  async findByName(name: string): Promise<User | null> {
+    return (
+      this.users.find(
+        (user) => user.name.toLowerCase() === name.toLowerCase()
+      ) ?? null
+    );
   }
 
-  save(data: CreateUserRecord): User {
+  async save(data: CreateUserRecord): Promise<User> {
     const id = `user-${++this.counter}`;
     const now = new Date();
     const user = createMockUser(id, data, {
@@ -52,7 +55,7 @@ class InMemoryUserRepository implements UserRepository {
     return user;
   }
 
-  update(id: string, data: UpdateUserRecord): User | null {
+  async update(id: string, data: UpdateUserRecord): Promise<User | null> {
     const index = this.users.findIndex((user) => user.id === id);
     if (index === -1) {
       return null;
@@ -75,13 +78,13 @@ class InMemoryUserRepository implements UserRepository {
     return updated;
   }
 
-  delete(id: string): boolean {
+  async delete(id: string): Promise<boolean> {
     const initialLength = this.users.length;
     this.users = this.users.filter((user) => user.id !== id);
     return this.users.length !== initialLength;
   }
 
-  count(): number {
+  async count(): Promise<number> {
     return this.users.length;
   }
 }
@@ -96,8 +99,8 @@ describe('UserService', () => {
     service = new UserService(repository, jwtSecret);
   });
 
-  it('creates users with hashed passwords and returns public profile', () => {
-    const user = service.createUser({
+  it('creates users with hashed passwords and returns public profile', async () => {
+    const user = await service.createUser({
       name: 'Admin',
       password: 'secure-password',
       email: 'admin@example.com',
@@ -111,28 +114,28 @@ describe('UserService', () => {
       })
     );
 
-    const stored = repository.findById(user.id);
+    const stored = await repository.findById(user.id);
     expect(stored).not.toBeNull();
     expect(stored?.passwordHash).toBeDefined();
     expect(stored?.passwordSalt).toBeDefined();
     expect(stored?.passwordHash).not.toEqual('secure-password');
   });
 
-  it('prevents duplicate user names', () => {
-    service.createUser({ name: 'Admin', password: 'password' });
+  it('prevents duplicate user names', async () => {
+    await service.createUser({ name: 'Admin', password: 'password' });
 
-    expect(() =>
+    await expect(() =>
       service.createUser({ name: 'Admin', password: 'password' })
-    ).toThrow(/already exists/);
+    ).rejects.toThrow(/already exists/);
   });
 
-  it('authenticates valid users and issues tokens', () => {
-    const created = service.createUser({
+  it('authenticates valid users and issues tokens', async () => {
+    const created = await service.createUser({
       name: 'Admin',
       password: 'password123',
     });
 
-    const tokens = service.authenticate('Admin', 'password123');
+    const tokens = await service.authenticate('Admin', 'password123');
 
     expect(tokens.user).toEqual(created);
     const accessPayload = jwt.verify(tokens.accessToken, jwtSecret);
@@ -153,25 +156,25 @@ describe('UserService', () => {
     );
   });
 
-  it('refreshes tokens for enabled users', () => {
-    service.createUser({ name: 'Admin', password: 'password123' });
-    const { refreshToken } = service.authenticate('Admin', 'password123');
+  it('refreshes tokens for enabled users', async () => {
+    await service.createUser({ name: 'Admin', password: 'password123' });
+    const { refreshToken } = await service.authenticate('Admin', 'password123');
 
-    const refreshed = service.refreshTokens(refreshToken);
+    const refreshed = await service.refreshTokens(refreshToken);
 
     expect(refreshed.accessToken).toBeDefined();
     expect(refreshed.refreshToken).toBeDefined();
     expect(refreshed.user.name).toBe('Admin');
   });
 
-  it('updates user details and enforces constraints', () => {
-    const created = service.createUser({
+  it('updates user details and enforces constraints', async () => {
+    const created = await service.createUser({
       name: 'Admin',
       password: 'password123',
       email: 'admin@example.com',
     });
 
-    const updated = service.updateUser(created.id, {
+    const updated = await service.updateUser(created.id, {
       name: 'Admin2',
       email: null,
       password: 'new-pass',
@@ -186,8 +189,8 @@ describe('UserService', () => {
       })
     );
 
-    expect(() => service.updateUser(created.id, { password: '123' })).toThrow(
-      /at least/
-    );
+    await expect(() =>
+      service.updateUser(created.id, { password: '123' })
+    ).rejects.toThrow(/at least/);
   });
 });

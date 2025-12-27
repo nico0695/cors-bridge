@@ -77,7 +77,7 @@ export class SqliteMockEndpointRepository implements MockEndpointRepository {
     };
   }
 
-  findAll(): MockEndpoint[] {
+  async findAll(): Promise<MockEndpoint[]> {
     const stmt = this.db.prepare(
       'SELECT * FROM mock_endpoints ORDER BY created_at DESC'
     );
@@ -85,19 +85,19 @@ export class SqliteMockEndpointRepository implements MockEndpointRepository {
     return rows.map((row) => this.rowToEntity(row));
   }
 
-  findById(id: string): MockEndpoint | null {
+  async findById(id: string): Promise<MockEndpoint | null> {
     const stmt = this.db.prepare('SELECT * FROM mock_endpoints WHERE id = ?');
     const row = stmt.get(id) as MockEndpointRow | undefined;
     return row ? this.rowToEntity(row) : null;
   }
 
-  findByPath(path: string): MockEndpoint | null {
+  async findByPath(path: string): Promise<MockEndpoint | null> {
     const stmt = this.db.prepare('SELECT * FROM mock_endpoints WHERE path = ?');
     const row = stmt.get(path) as MockEndpointRow | undefined;
     return row ? this.rowToEntity(row) : null;
   }
 
-  save(dto: CreateMockEndpointDto): MockEndpoint {
+  async save(dto: CreateMockEndpointDto): Promise<MockEndpoint> {
     const id = randomUUID();
     const now = Date.now();
 
@@ -123,11 +123,14 @@ export class SqliteMockEndpointRepository implements MockEndpointRepository {
     );
 
     this.logger.info({ id, path: dto.path }, 'Mock endpoint created');
-    return this.findById(id)!;
+    return (await this.findById(id))!;
   }
 
-  update(id: string, dto: UpdateMockEndpointDto): MockEndpoint | null {
-    const existing = this.findById(id);
+  async update(
+    id: string,
+    dto: UpdateMockEndpointDto
+  ): Promise<MockEndpoint | null> {
+    const existing = await this.findById(id);
     if (!existing) {
       return null;
     }
@@ -182,10 +185,10 @@ export class SqliteMockEndpointRepository implements MockEndpointRepository {
     stmt.run(...values);
 
     this.logger.info({ id }, 'Mock endpoint updated');
-    return this.findById(id);
+    return await this.findById(id);
   }
 
-  delete(id: string): boolean {
+  async delete(id: string): Promise<boolean> {
     const stmt = this.db.prepare('DELETE FROM mock_endpoints WHERE id = ?');
     const result = stmt.run(id);
     const deleted = result.changes > 0;
@@ -195,7 +198,7 @@ export class SqliteMockEndpointRepository implements MockEndpointRepository {
     return deleted;
   }
 
-  count(): number {
+  async count(): Promise<number> {
     const stmt = this.db.prepare(
       'SELECT COUNT(*) as count FROM mock_endpoints'
     );

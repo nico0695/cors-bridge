@@ -147,7 +147,7 @@ export class SqliteProxyEndpointRepository implements ProxyEndpointRepository {
     };
   }
 
-  findAll(): ProxyEndpoint[] {
+  async findAll(): Promise<ProxyEndpoint[]> {
     const stmt = this.db.prepare(
       'SELECT * FROM proxy_endpoints ORDER BY created_at DESC'
     );
@@ -155,13 +155,13 @@ export class SqliteProxyEndpointRepository implements ProxyEndpointRepository {
     return rows.map((row) => this.rowToEntity(row));
   }
 
-  findById(id: string): ProxyEndpoint | null {
+  async findById(id: string): Promise<ProxyEndpoint | null> {
     const stmt = this.db.prepare('SELECT * FROM proxy_endpoints WHERE id = ?');
     const row = stmt.get(id) as ProxyEndpointRow | undefined;
     return row ? this.rowToEntity(row) : null;
   }
 
-  findByPath(path: string): ProxyEndpoint | null {
+  async findByPath(path: string): Promise<ProxyEndpoint | null> {
     const stmt = this.db.prepare(
       'SELECT * FROM proxy_endpoints WHERE path = ?'
     );
@@ -169,7 +169,7 @@ export class SqliteProxyEndpointRepository implements ProxyEndpointRepository {
     return row ? this.rowToEntity(row) : null;
   }
 
-  save(dto: CreateProxyEndpointDto): ProxyEndpoint {
+  async save(dto: CreateProxyEndpointDto): Promise<ProxyEndpoint> {
     const id = randomUUID();
     const now = Date.now();
 
@@ -195,11 +195,14 @@ export class SqliteProxyEndpointRepository implements ProxyEndpointRepository {
     );
 
     this.logger.info({ id, path: dto.path }, 'Proxy endpoint created');
-    return this.findById(id)!;
+    return (await this.findById(id))!;
   }
 
-  update(id: string, dto: UpdateProxyEndpointDto): ProxyEndpoint | null {
-    const existing = this.findById(id);
+  async update(
+    id: string,
+    dto: UpdateProxyEndpointDto
+  ): Promise<ProxyEndpoint | null> {
+    const existing = await this.findById(id);
     if (!existing) {
       return null;
     }
@@ -254,10 +257,10 @@ export class SqliteProxyEndpointRepository implements ProxyEndpointRepository {
     stmt.run(...values);
 
     this.logger.info({ id }, 'Proxy endpoint updated');
-    return this.findById(id);
+    return await this.findById(id);
   }
 
-  delete(id: string): boolean {
+  async delete(id: string): Promise<boolean> {
     const stmt = this.db.prepare('DELETE FROM proxy_endpoints WHERE id = ?');
     const result = stmt.run(id);
     const deleted = result.changes > 0;
@@ -267,7 +270,7 @@ export class SqliteProxyEndpointRepository implements ProxyEndpointRepository {
     return deleted;
   }
 
-  count(): number {
+  async count(): Promise<number> {
     const stmt = this.db.prepare(
       'SELECT COUNT(*) as count FROM proxy_endpoints'
     );

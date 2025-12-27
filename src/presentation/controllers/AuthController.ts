@@ -8,7 +8,7 @@ export class AuthController {
     private readonly logger: Logger
   ) {}
 
-  login = (req: Request, res: Response): void => {
+  login = async (req: Request, res: Response): Promise<void> => {
     const { name, password } = req.body ?? {};
     if (typeof name !== 'string' || typeof password !== 'string') {
       res.status(400).json({ error: 'Name and password are required' });
@@ -16,7 +16,7 @@ export class AuthController {
     }
 
     try {
-      const tokens = this.userService.authenticate(name, password);
+      const tokens = await this.userService.authenticate(name, password);
       res.json(tokens);
     } catch (error) {
       this.logger.warn({ error, name }, 'Failed login attempt');
@@ -24,7 +24,7 @@ export class AuthController {
     }
   };
 
-  refresh = (req: Request, res: Response): void => {
+  refresh = async (req: Request, res: Response): Promise<void> => {
     const { refreshToken } = req.body ?? {};
     if (typeof refreshToken !== 'string') {
       res.status(400).json({ error: 'Refresh token is required' });
@@ -32,7 +32,7 @@ export class AuthController {
     }
 
     try {
-      const tokens = this.userService.refreshTokens(refreshToken);
+      const tokens = await this.userService.refreshTokens(refreshToken);
       res.json(tokens);
     } catch (error) {
       this.logger.warn({ error }, 'Failed token refresh');

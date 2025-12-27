@@ -11,20 +11,21 @@ const MAX_DELAY_MS = 10000;
 export class ProxyEndpointService {
   constructor(private readonly repository: ProxyEndpointRepository) {}
 
-  getAllEndpoints(): ProxyEndpoint[] {
+  async getAllEndpoints(): Promise<ProxyEndpoint[]> {
     return this.repository.findAll();
   }
 
-  getEndpointById(id: string): ProxyEndpoint | null {
+  async getEndpointById(id: string): Promise<ProxyEndpoint | null> {
     return this.repository.findById(id);
   }
 
-  getEndpointByPath(path: string): ProxyEndpoint | null {
+  async getEndpointByPath(path: string): Promise<ProxyEndpoint | null> {
     return this.repository.findByPath(path);
   }
 
-  createEndpoint(dto: CreateProxyEndpointDto): ProxyEndpoint {
-    if (this.repository.count() >= MAX_ENDPOINTS) {
+  async createEndpoint(dto: CreateProxyEndpointDto): Promise<ProxyEndpoint> {
+    const count = await this.repository.count();
+    if (count >= MAX_ENDPOINTS) {
       throw new Error(
         `Cannot create endpoint: maximum limit of ${MAX_ENDPOINTS} endpoints reached`
       );
@@ -32,7 +33,8 @@ export class ProxyEndpointService {
 
     const normalizedPath = dto.path.startsWith('/') ? dto.path : `/${dto.path}`;
 
-    if (this.repository.findByPath(normalizedPath)) {
+    const existing = await this.repository.findByPath(normalizedPath);
+    if (existing) {
       throw new Error(`Endpoint with path ${normalizedPath} already exists`);
     }
 
@@ -64,15 +66,15 @@ export class ProxyEndpointService {
     });
   }
 
-  updateEndpoint(
+  async updateEndpoint(
     id: string,
     dto: UpdateProxyEndpointDto
-  ): ProxyEndpoint | null {
+  ): Promise<ProxyEndpoint | null> {
     if (dto.path) {
       const normalizedPath = dto.path.startsWith('/')
         ? dto.path
         : `/${dto.path}`;
-      const existing = this.repository.findByPath(normalizedPath);
+      const existing = await this.repository.findByPath(normalizedPath);
       if (existing && existing.id !== id) {
         throw new Error(`Endpoint with path ${normalizedPath} already exists`);
       }
@@ -105,12 +107,12 @@ export class ProxyEndpointService {
     return this.repository.update(id, dto);
   }
 
-  deleteEndpoint(id: string): boolean {
+  async deleteEndpoint(id: string): Promise<boolean> {
     return this.repository.delete(id);
   }
 
-  getStats() {
-    const all = this.repository.findAll();
+  async getStats() {
+    const all = await this.repository.findAll();
     const enabled = all.filter((e) => e.enabled).length;
     return {
       total: all.length,

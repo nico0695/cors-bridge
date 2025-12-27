@@ -21,9 +21,9 @@ export class UserController {
     private readonly logger: Logger
   ) {}
 
-  list = (_req: Request, res: Response): void => {
+  list = async (_req: Request, res: Response): Promise<void> => {
     try {
-      const users = this.userService.listUsers();
+      const users = await this.userService.listUsers();
       res.json(users);
     } catch (error) {
       this.logger.error({ error }, 'Failed to list users');
@@ -31,7 +31,7 @@ export class UserController {
     }
   };
 
-  register = (req: Request, res: Response): void => {
+  register = async (req: Request, res: Response): Promise<void> => {
     try {
       const { name, password, email } = req.body ?? {};
 
@@ -42,7 +42,7 @@ export class UserController {
         return;
       }
 
-      const user = this.userService.createUser({
+      const user = await this.userService.createUser({
         name,
         password,
         email: typeof email === 'string' ? email : undefined,
@@ -58,11 +58,11 @@ export class UserController {
     }
   };
 
-  create = (req: Request, res: Response): void => {
+  create = async (req: Request, res: Response): Promise<void> => {
     try {
       const { name, password, email, status, role } = req.body ?? {};
 
-      if (this.userService.hasUsers() && !req.authUser) {
+      if ((await this.userService.hasUsers()) && !req.authUser) {
         res.status(401).json({ error: 'Unauthorized' });
         return;
       }
@@ -84,7 +84,7 @@ export class UserController {
         return;
       }
 
-      const user = this.userService.createUser({
+      const user = await this.userService.createUser({
         name,
         password,
         email: typeof email === 'string' ? email : undefined,
@@ -101,7 +101,7 @@ export class UserController {
     }
   };
 
-  update = (req: Request, res: Response): void => {
+  update = async (req: Request, res: Response): Promise<void> => {
     try {
       const { id } = req.params;
       const { name, password, email, status, role } = req.body ?? {};
@@ -151,7 +151,7 @@ export class UserController {
         updates.role = role;
       }
 
-      const updated = this.userService.updateUser(id, updates);
+      const updated = await this.userService.updateUser(id, updates);
 
       if (!updated) {
         res.status(404).json({ error: 'User not found' });
@@ -167,10 +167,10 @@ export class UserController {
     }
   };
 
-  delete = (req: Request, res: Response): void => {
+  delete = async (req: Request, res: Response): Promise<void> => {
     try {
       const { id } = req.params;
-      const deleted = this.userService.deleteUser(id);
+      const deleted = await this.userService.deleteUser(id);
 
       if (!deleted) {
         res.status(404).json({ error: 'User not found' });

@@ -10,20 +10,21 @@ const MAX_ENDPOINTS = 50;
 export class MockEndpointService {
   constructor(private readonly repository: MockEndpointRepository) {}
 
-  getAllEndpoints(): MockEndpoint[] {
+  async getAllEndpoints(): Promise<MockEndpoint[]> {
     return this.repository.findAll();
   }
 
-  getEndpointById(id: string): MockEndpoint | null {
+  async getEndpointById(id: string): Promise<MockEndpoint | null> {
     return this.repository.findById(id);
   }
 
-  getEndpointByPath(path: string): MockEndpoint | null {
+  async getEndpointByPath(path: string): Promise<MockEndpoint | null> {
     return this.repository.findByPath(path);
   }
 
-  createEndpoint(dto: CreateMockEndpointDto): MockEndpoint {
-    if (this.repository.count() >= MAX_ENDPOINTS) {
+  async createEndpoint(dto: CreateMockEndpointDto): Promise<MockEndpoint> {
+    const count = await this.repository.count();
+    if (count >= MAX_ENDPOINTS) {
       throw new Error(
         `Cannot create endpoint: maximum limit of ${MAX_ENDPOINTS} endpoints reached`
       );
@@ -33,7 +34,8 @@ export class MockEndpointService {
     const normalizedPath = dto.path.startsWith('/') ? dto.path : `/${dto.path}`;
 
     // Check if path already exists
-    if (this.repository.findByPath(normalizedPath)) {
+    const existing = await this.repository.findByPath(normalizedPath);
+    if (existing) {
       throw new Error(`Endpoint with path ${normalizedPath} already exists`);
     }
 
@@ -43,13 +45,16 @@ export class MockEndpointService {
     });
   }
 
-  updateEndpoint(id: string, dto: UpdateMockEndpointDto): MockEndpoint | null {
+  async updateEndpoint(
+    id: string,
+    dto: UpdateMockEndpointDto
+  ): Promise<MockEndpoint | null> {
     // If path is being updated, normalize and check uniqueness
     if (dto.path) {
       const normalizedPath = dto.path.startsWith('/')
         ? dto.path
         : `/${dto.path}`;
-      const existing = this.repository.findByPath(normalizedPath);
+      const existing = await this.repository.findByPath(normalizedPath);
       if (existing && existing.id !== id) {
         throw new Error(`Endpoint with path ${normalizedPath} already exists`);
       }
@@ -59,12 +64,12 @@ export class MockEndpointService {
     return this.repository.update(id, dto);
   }
 
-  deleteEndpoint(id: string): boolean {
+  async deleteEndpoint(id: string): Promise<boolean> {
     return this.repository.delete(id);
   }
 
-  getStats() {
-    const all = this.repository.findAll();
+  async getStats() {
+    const all = await this.repository.findAll();
     const enabled = all.filter((e) => e.enabled).length;
     return {
       total: all.length,

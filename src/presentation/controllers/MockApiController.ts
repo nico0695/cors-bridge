@@ -15,7 +15,7 @@ export class MockApiController {
 
       this.logger.debug({ path: requestPath }, 'Looking up mock endpoint');
 
-      const endpoint = this.service.getEndpointByPath(requestPath);
+      const endpoint = await this.service.getEndpointByPath(requestPath);
 
       if (!endpoint) {
         res.status(404).json({ error: 'Mock endpoint not found' });

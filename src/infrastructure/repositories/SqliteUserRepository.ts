@@ -87,25 +87,25 @@ export class SqliteUserRepository implements UserRepository {
     };
   }
 
-  findAll(): User[] {
+  async findAll(): Promise<User[]> {
     const stmt = this.db.prepare('SELECT * FROM users ORDER BY created_at ASC');
     const rows = stmt.all() as UserRow[];
     return rows.map((row) => this.rowToEntity(row));
   }
 
-  findById(id: string): User | null {
+  async findById(id: string): Promise<User | null> {
     const stmt = this.db.prepare('SELECT * FROM users WHERE id = ?');
     const row = stmt.get(id) as UserRow | undefined;
     return row ? this.rowToEntity(row) : null;
   }
 
-  findByName(name: string): User | null {
+  async findByName(name: string): Promise<User | null> {
     const stmt = this.db.prepare('SELECT * FROM users WHERE name = ?');
     const row = stmt.get(name) as UserRow | undefined;
     return row ? this.rowToEntity(row) : null;
   }
 
-  save(data: CreateUserRecord): User {
+  async save(data: CreateUserRecord): Promise<User> {
     const id = randomUUID();
     const now = Date.now();
 
@@ -128,11 +128,11 @@ export class SqliteUserRepository implements UserRepository {
     );
 
     this.logger.info({ id, name: data.name, role: data.role }, 'User created');
-    return this.findById(id)!;
+    return (await this.findById(id))!;
   }
 
-  update(id: string, data: UpdateUserRecord): User | null {
-    const existing = this.findById(id);
+  async update(id: string, data: UpdateUserRecord): Promise<User | null> {
+    const existing = await this.findById(id);
     if (!existing) {
       return null;
     }
@@ -179,10 +179,10 @@ export class SqliteUserRepository implements UserRepository {
     stmt.run(...values);
 
     this.logger.info({ id }, 'User updated');
-    return this.findById(id);
+    return await this.findById(id);
   }
 
-  delete(id: string): boolean {
+  async delete(id: string): Promise<boolean> {
     const stmt = this.db.prepare('DELETE FROM users WHERE id = ?');
     const result = stmt.run(id);
     const deleted = result.changes > 0;
@@ -192,7 +192,7 @@ export class SqliteUserRepository implements UserRepository {
     return deleted;
   }
 
-  count(): number {
+  async count(): Promise<number> {
     const stmt = this.db.prepare('SELECT COUNT(*) as count FROM users');
     const result = stmt.get() as { count: number };
     return result.count;

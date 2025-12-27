@@ -5,11 +5,14 @@ import type {
 } from '../../domain/ProxyEndpoint.js';
 
 export interface ProxyEndpointRepository {
-  findAll(): ProxyEndpoint[];
-  findById(id: string): ProxyEndpoint | null;
-  findByPath(path: string): ProxyEndpoint | null;
-  save(dto: CreateProxyEndpointDto): ProxyEndpoint;
-  update(id: string, dto: UpdateProxyEndpointDto): ProxyEndpoint | null;
-  delete(id: string): boolean;
-  count(): number;
+  findAll(): Promise<ProxyEndpoint[]>;
+  findById(id: string): Promise<ProxyEndpoint | null>;
+  findByPath(path: string): Promise<ProxyEndpoint | null>;
+  save(dto: CreateProxyEndpointDto): Promise<ProxyEndpoint>;
+  update(
+    id: string,
+    dto: UpdateProxyEndpointDto
+  ): Promise<ProxyEndpoint | null>;
+  delete(id: string): Promise<boolean>;
+  count(): Promise<number>;
 }

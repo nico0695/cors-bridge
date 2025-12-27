@@ -5,11 +5,11 @@ import type {
 } from '../../domain/User.js';
 
 export interface UserRepository {
-  findAll(): User[];
-  findById(id: string): User | null;
-  findByName(name: string): User | null;
-  save(data: CreateUserRecord): User;
-  update(id: string, data: UpdateUserRecord): User | null;
-  delete(id: string): boolean;
-  count(): number;
+  findAll(): Promise<User[]>;
+  findById(id: string): Promise<User | null>;
+  findByName(name: string): Promise<User | null>;
+  save(data: CreateUserRecord): Promise<User>;
+  update(id: string, data: UpdateUserRecord): Promise<User | null>;
+  delete(id: string): Promise<boolean>;
+  count(): Promise<number>;
 }

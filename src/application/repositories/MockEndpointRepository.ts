@@ -5,11 +5,11 @@ import type {
 } from '../../domain/MockEndpoint.js';
 
 export interface MockEndpointRepository {
-  findAll(): MockEndpoint[];
-  findById(id: string): MockEndpoint | null;
-  findByPath(path: string): MockEndpoint | null;
-  save(dto: CreateMockEndpointDto): MockEndpoint;
-  update(id: string, dto: UpdateMockEndpointDto): MockEndpoint | null;
-  delete(id: string): boolean;
-  count(): number;
+  findAll(): Promise<MockEndpoint[]>;
+  findById(id: string): Promise<MockEndpoint | null>;
+  findByPath(path: string): Promise<MockEndpoint | null>;
+  save(dto: CreateMockEndpointDto): Promise<MockEndpoint>;
+  update(id: string, dto: UpdateMockEndpointDto): Promise<MockEndpoint | null>;
+  delete(id: string): Promise<boolean>;
+  count(): Promise<number>;
 }

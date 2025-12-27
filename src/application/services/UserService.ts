@@ -41,20 +41,22 @@ export class UserService {
     }
   }
 
-  listUsers(): PublicUser[] {
-    return this.repository.findAll().map((user) => this.toPublicUser(user));
+  async listUsers(): Promise<PublicUser[]> {
+    const users = await this.repository.findAll();
+    return users.map((user) => this.toPublicUser(user));
   }
 
-  hasUsers(): boolean {
-    return this.repository.count() > 0;
+  async hasUsers(): Promise<boolean> {
+    const count = await this.repository.count();
+    return count > 0;
   }
 
-  getUserById(id: string): PublicUser | null {
-    const user = this.repository.findById(id);
+  async getUserById(id: string): Promise<PublicUser | null> {
+    const user = await this.repository.findById(id);
     return user ? this.toPublicUser(user) : null;
   }
 
-  createUser(input: CreateUserInput): PublicUser {
+  async createUser(input: CreateUserInput): Promise<PublicUser> {
     const normalizedName = this.normalizeName(input.name);
     if (normalizedName.length === 0) {
       throw new Error('Name is required');
@@ -66,7 +68,7 @@ export class UserService {
       );
     }
 
-    const existing = this.repository.findByName(normalizedName);
+    const existing = await this.repository.findByName(normalizedName);
     if (existing) {
       throw new Error(`User with name ${normalizedName} already exists`);
     }
@@ -75,7 +77,7 @@ export class UserService {
     const status = this.normalizeStatus(input.status);
     const role = this.normalizeRole(input.role);
 
-    const user = this.repository.save({
+    const user = await this.repository.save({
       name: normalizedName,
       email: this.normalizeEmail(input.email),
       status,
@@ -87,8 +89,11 @@ export class UserService {
     return this.toPublicUser(user);
   }
 
-  updateUser(id: string, input: UpdateUserInput): PublicUser | null {
-    const existing = this.repository.findById(id);
+  async updateUser(
+    id: string,
+    input: UpdateUserInput
+  ): Promise<PublicUser | null> {
+    const existing = await this.repository.findById(id);
     if (!existing) {
       return null;
     }
@@ -100,7 +105,7 @@ export class UserService {
       if (normalizedName.length === 0) {
         throw new Error('Name cannot be empty');
       }
-      const conflict = this.repository.findByName(normalizedName);
+      const conflict = await this.repository.findByName(normalizedName);
       if (conflict && conflict.id !== id) {
         throw new Error(`User with name ${normalizedName} already exists`);
       }
@@ -139,17 +144,17 @@ export class UserService {
       return this.toPublicUser(existing);
     }
 
-    const updated = this.repository.update(id, updates);
+    const updated = await this.repository.update(id, updates);
     return updated ? this.toPublicUser(updated) : null;
   }
 
-  deleteUser(id: string): boolean {
+  async deleteUser(id: string): Promise<boolean> {
     return this.repository.delete(id);
   }
 
-  authenticate(name: string, password: string): AuthTokens {
+  async authenticate(name: string, password: string): Promise<AuthTokens> {
     const normalizedName = this.normalizeName(name);
-    const user = this.repository.findByName(normalizedName);
+    const user = await this.repository.findByName(normalizedName);
     if (!user) {
       throw new Error('Invalid credentials');
     }
@@ -165,9 +170,9 @@ export class UserService {
     return this.generateTokens(user);
   }
 
-  refreshTokens(refreshToken: string): AuthTokens {
+  async refreshTokens(refreshToken: string): Promise<AuthTokens> {
     const payload = this.verifyToken(refreshToken, 'refresh');
-    const user = this.repository.findById(payload.sub);
+    const user = await this.repository.findById(payload.sub);
     if (!user) {
       throw new Error('User not found');
     }
@@ -177,9 +182,9 @@ export class UserService {
     return this.generateTokens(user);
   }
 
-  verifyAccessToken(accessToken: string): PublicUser {
+  async verifyAccessToken(accessToken: string): Promise<PublicUser> {
     const payload = this.verifyToken(accessToken, 'access');
-    const user = this.repository.findById(payload.sub);
+    const user = await this.repository.findById(payload.sub);
     if (!user) {
       throw new Error('User not found');
     }

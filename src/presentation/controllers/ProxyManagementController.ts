@@ -8,9 +8,9 @@ export class ProxyManagementController {
     private readonly logger: Logger
   ) {}
 
-  getAll = (req: Request, res: Response): void => {
+  getAll = async (req: Request, res: Response): Promise<void> => {
     try {
-      const endpoints = this.service.getAllEndpoints();
+      const endpoints = await this.service.getAllEndpoints();
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
@@ -21,10 +21,10 @@ export class ProxyManagementController {
     }
   };
 
-  getById = (req: Request, res: Response): void => {
+  getById = async (req: Request, res: Response): Promise<void> => {
     try {
       const { id } = req.params;
-      const endpoint = this.service.getEndpointById(id);
+      const endpoint = await this.service.getEndpointById(id);
 
       if (!endpoint) {
         res.status(404).json({ error: 'Proxy endpoint not found' });
@@ -41,9 +41,9 @@ export class ProxyManagementController {
     }
   };
 
-  create = (req: Request, res: Response): void => {
+  create = async (req: Request, res: Response): Promise<void> => {
     try {
-      const endpoint = this.service.createEndpoint(req.body);
+      const endpoint = await this.service.createEndpoint(req.body);
       res.status(201).json(endpoint);
     } catch (error) {
       this.logger.error({ error }, 'Failed to create proxy endpoint');
@@ -55,10 +55,10 @@ export class ProxyManagementController {
     }
   };
 
-  update = (req: Request, res: Response): void => {
+  update = async (req: Request, res: Response): Promise<void> => {
     try {
       const { id } = req.params;
-      const endpoint = this.service.updateEndpoint(id, req.body);
+      const endpoint = await this.service.updateEndpoint(id, req.body);
 
       if (!endpoint) {
         res.status(404).json({ error: 'Proxy endpoint not found' });
@@ -76,10 +76,10 @@ export class ProxyManagementController {
     }
   };
 
-  delete = (req: Request, res: Response): void => {
+  delete = async (req: Request, res: Response): Promise<void> => {
     try {
       const { id } = req.params;
-      const deleted = this.service.deleteEndpoint(id);
+      const deleted = await this.service.deleteEndpoint(id);
 
       if (!deleted) {
         res.status(404).json({ error: 'Proxy endpoint not found' });
@@ -93,9 +93,9 @@ export class ProxyManagementController {
     }
   };
 
-  getStats = (req: Request, res: Response): void => {
+  getStats = async (req: Request, res: Response): Promise<void> => {
     try {
-      const stats = this.service.getStats();
+      const stats = await this.service.getStats();
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');

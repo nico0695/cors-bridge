@@ -10,21 +10,21 @@ class ProxyEndpointRepositoryMock implements ProxyEndpointRepository {
   private endpoints: Map<string, ProxyEndpoint> = new Map();
   private idCounter = 1;
 
-  findAll(): ProxyEndpoint[] {
+  async findAll(): Promise<ProxyEndpoint[]> {
     return Array.from(this.endpoints.values());
   }
 
-  findById(id: string): ProxyEndpoint | null {
+  async findById(id: string): Promise<ProxyEndpoint | null> {
     return this.endpoints.get(id) || null;
   }
 
-  findByPath(path: string): ProxyEndpoint | null {
+  async findByPath(path: string): Promise<ProxyEndpoint | null> {
     return (
       Array.from(this.endpoints.values()).find((e) => e.path === path) || null
     );
   }
 
-  save(dto: CreateProxyEndpointDto): ProxyEndpoint {
+  async save(dto: CreateProxyEndpointDto): Promise<ProxyEndpoint> {
     const id = `proxy-${this.idCounter++}`;
     const now = new Date();
     const endpoint: ProxyEndpoint = {
@@ -36,6 +36,7 @@ class ProxyEndpointRepositoryMock implements ProxyEndpointRepository {
       enabled: dto.enabled !== false,
       statusCodeOverride: dto.statusCodeOverride,
       delayMs: dto.delayMs || 0,
+      useCache: dto.useCache || false,
       createdAt: now,
       updatedAt: now,
     };
@@ -43,7 +44,7 @@ class ProxyEndpointRepositoryMock implements ProxyEndpointRepository {
     return endpoint;
   }
 
-  update(id: string, dto: any): ProxyEndpoint | null {
+  async update(id: string, dto: any): Promise<ProxyEndpoint | null> {
     const existing = this.endpoints.get(id);
     if (!existing) return null;
 
@@ -56,11 +57,11 @@ class ProxyEndpointRepositoryMock implements ProxyEndpointRepository {
     return updated;
   }
 
-  delete(id: string): boolean {
+  async delete(id: string): Promise<boolean> {
     return this.endpoints.delete(id);
   }
 
-  count(): number {
+  async count(): Promise<number> {
     return this.endpoints.size;
   }
 
@@ -79,14 +80,14 @@ describe('ProxyEndpointService', () => {
   });
 
   describe('createEndpoint', () => {
-    it('should create a new endpoint with valid data', () => {
+    it('should create a new endpoint with valid data', async () => {
       const dto: CreateProxyEndpointDto = {
         name: 'Test Proxy',
         path: '/test',
         baseUrl: 'https://api.example.com',
       };
 
-      const result = service.createEndpoint(dto);
+      const result = await service.createEndpoint(dto);
 
       expect(result.name).toBe('Test Proxy');
       expect(result.path).toBe('/test');
@@ -95,36 +96,36 @@ describe('ProxyEndpointService', () => {
       expect(result.delayMs).toBe(0);
     });
 
-    it('should normalize path by adding leading slash', () => {
+    it('should normalize path by adding leading slash', async () => {
       const dto: CreateProxyEndpointDto = {
         name: 'Test',
         path: 'test/path',
         baseUrl: 'https://api.example.com',
       };
 
-      const result = service.createEndpoint(dto);
+      const result = await service.createEndpoint(dto);
 
       expect(result.path).toBe('/test/path');
     });
 
-    it('should throw error when creating duplicate path', () => {
+    it('should throw error when creating duplicate path', async () => {
       const dto: CreateProxyEndpointDto = {
         name: 'Test',
         path: '/duplicate',
         baseUrl: 'https://api.example.com',
       };
 
-      service.createEndpoint(dto);
+      await service.createEndpoint(dto);
 
-      expect(() => service.createEndpoint(dto)).toThrow(
+      await expect(async () => await service.createEndpoint(dto)).rejects.toThrow(
         'Endpoint with path /duplicate already exists'
       );
     });
 
-    it('should throw error when max endpoints limit is reached', () => {
+    it('should throw error when max endpoints limit is reached', async () => {
       // Create 50 endpoints
       for (let i = 0; i < 50; i++) {
-        service.createEndpoint({
+        await service.createEndpoint({
           name: `Endpoint ${i}`,
           path: `/endpoint-${i}`,
           baseUrl: 'https://api.example.com',
@@ -132,54 +133,54 @@ describe('ProxyEndpointService', () => {
       }
 
       // Try to create the 51st
-      expect(() =>
-        service.createEndpoint({
+      await expect(async () =>
+        await service.createEndpoint({
           name: 'Endpoint 51',
           path: '/endpoint-51',
           baseUrl: 'https://api.example.com',
         })
-      ).toThrow(
+      ).rejects.toThrow(
         'Cannot create endpoint: maximum limit of 50 endpoints reached'
       );
     });
 
-    it('should throw error for invalid base URL without http/https', () => {
+    it('should throw error for invalid base URL without http/https', async () => {
       const dto: CreateProxyEndpointDto = {
         name: 'Invalid',
         path: '/invalid',
         baseUrl: 'api.example.com',
       };
 
-      expect(() => service.createEndpoint(dto)).toThrow(
+      await expect(async () => await service.createEndpoint(dto)).rejects.toThrow(
         'Base URL must start with http:// or https://'
       );
     });
 
-    it('should accept http:// base URL', () => {
+    it('should accept http:// base URL', async () => {
       const dto: CreateProxyEndpointDto = {
         name: 'HTTP',
         path: '/http',
         baseUrl: 'http://api.example.com',
       };
 
-      const result = service.createEndpoint(dto);
+      const result = await service.createEndpoint(dto);
 
       expect(result.baseUrl).toBe('http://api.example.com');
     });
 
-    it('should accept https:// base URL', () => {
+    it('should accept https:// base URL', async () => {
       const dto: CreateProxyEndpointDto = {
         name: 'HTTPS',
         path: '/https',
         baseUrl: 'https://api.example.com',
       };
 
-      const result = service.createEndpoint(dto);
+      const result = await service.createEndpoint(dto);
 
       expect(result.baseUrl).toBe('https://api.example.com');
     });
 
-    it('should throw error for invalid status code override (too low)', () => {
+    it('should throw error for invalid status code override (too low)', async () => {
       const dto: CreateProxyEndpointDto = {
         name: 'Invalid',
         path: '/invalid',
@@ -187,12 +188,12 @@ describe('ProxyEndpointService', () => {
         statusCodeOverride: 99,
       };
 
-      expect(() => service.createEndpoint(dto)).toThrow(
+      await expect(async () => await service.createEndpoint(dto)).rejects.toThrow(
         'Status code override must be between 100 and 599'
       );
     });
 
-    it('should throw error for invalid status code override (too high)', () => {
+    it('should throw error for invalid status code override (too high)', async () => {
       const dto: CreateProxyEndpointDto = {
         name: 'Invalid',
         path: '/invalid',
@@ -200,12 +201,12 @@ describe('ProxyEndpointService', () => {
         statusCodeOverride: 600,
       };
 
-      expect(() => service.createEndpoint(dto)).toThrow(
+      await expect(async () => await service.createEndpoint(dto)).rejects.toThrow(
         'Status code override must be between 100 and 599'
       );
     });
 
-    it('should accept valid status code override', () => {
+    it('should accept valid status code override', async () => {
       const dto: CreateProxyEndpointDto = {
         name: 'Override',
         path: '/override',
@@ -213,24 +214,24 @@ describe('ProxyEndpointService', () => {
         statusCodeOverride: 500,
       };
 
-      const result = service.createEndpoint(dto);
+      const result = await service.createEndpoint(dto);
 
       expect(result.statusCodeOverride).toBe(500);
     });
 
-    it('should accept status code override undefined', () => {
+    it('should accept status code override undefined', async () => {
       const dto: CreateProxyEndpointDto = {
         name: 'No Override',
         path: '/no-override',
         baseUrl: 'https://api.example.com',
       };
 
-      const result = service.createEndpoint(dto);
+      const result = await service.createEndpoint(dto);
 
       expect(result.statusCodeOverride).toBeUndefined();
     });
 
-    it('should throw error for invalid delay (negative)', () => {
+    it('should throw error for invalid delay (negative)', async () => {
       const dto: CreateProxyEndpointDto = {
         name: 'Invalid',
         path: '/invalid',
@@ -238,12 +239,12 @@ describe('ProxyEndpointService', () => {
         delayMs: -1,
       };
 
-      expect(() => service.createEndpoint(dto)).toThrow(
+      await expect(async () => await service.createEndpoint(dto)).rejects.toThrow(
         'Delay must be between 0 and 10000ms'
       );
     });
 
-    it('should throw error for invalid delay (too high)', () => {
+    it('should throw error for invalid delay (too high)', async () => {
       const dto: CreateProxyEndpointDto = {
         name: 'Invalid',
         path: '/invalid',
@@ -251,12 +252,12 @@ describe('ProxyEndpointService', () => {
         delayMs: 10001,
       };
 
-      expect(() => service.createEndpoint(dto)).toThrow(
+      await expect(async () => await service.createEndpoint(dto)).rejects.toThrow(
         'Delay must be between 0 and 10000ms'
       );
     });
 
-    it('should accept valid delay', () => {
+    it('should accept valid delay', async () => {
       const dto: CreateProxyEndpointDto = {
         name: 'Delayed',
         path: '/delayed',
@@ -264,12 +265,12 @@ describe('ProxyEndpointService', () => {
         delayMs: 5000,
       };
 
-      const result = service.createEndpoint(dto);
+      const result = await service.createEndpoint(dto);
 
       expect(result.delayMs).toBe(5000);
     });
 
-    it('should accept group ID', () => {
+    it('should accept group ID', async () => {
       const dto: CreateProxyEndpointDto = {
         name: 'Grouped',
         path: '/grouped',
@@ -277,85 +278,85 @@ describe('ProxyEndpointService', () => {
         groupId: 'test-group',
       };
 
-      const result = service.createEndpoint(dto);
+      const result = await service.createEndpoint(dto);
 
       expect(result.groupId).toBe('test-group');
     });
   });
 
   describe('getAllEndpoints', () => {
-    it('should return empty array when no endpoints exist', () => {
-      const result = service.getAllEndpoints();
+    it('should return empty array when no endpoints exist', async () => {
+      const result = await service.getAllEndpoints();
       expect(result).toEqual([]);
     });
 
-    it('should return all endpoints', () => {
-      service.createEndpoint({
+    it('should return all endpoints', async () => {
+      await service.createEndpoint({
         name: 'First',
         path: '/first',
         baseUrl: 'https://api.example.com',
       });
-      service.createEndpoint({
+      await service.createEndpoint({
         name: 'Second',
         path: '/second',
         baseUrl: 'https://api.example.com',
       });
 
-      const result = service.getAllEndpoints();
+      const result = await service.getAllEndpoints();
 
       expect(result).toHaveLength(2);
     });
   });
 
   describe('getEndpointById', () => {
-    it('should return endpoint by id', () => {
-      const created = service.createEndpoint({
+    it('should return endpoint by id', async () => {
+      const created = await service.createEndpoint({
         name: 'Test',
         path: '/test',
         baseUrl: 'https://api.example.com',
       });
 
-      const result = service.getEndpointById(created.id);
+      const result = await service.getEndpointById(created.id);
 
       expect(result).toBeDefined();
       expect(result?.id).toBe(created.id);
     });
 
-    it('should return null for non-existent id', () => {
-      const result = service.getEndpointById('non-existent');
+    it('should return null for non-existent id', async () => {
+      const result = await service.getEndpointById('non-existent');
       expect(result).toBeNull();
     });
   });
 
   describe('getEndpointByPath', () => {
-    it('should return endpoint by path', () => {
-      service.createEndpoint({
+    it('should return endpoint by path', async () => {
+      await service.createEndpoint({
         name: 'Test',
         path: '/test',
         baseUrl: 'https://api.example.com',
       });
 
-      const result = service.getEndpointByPath('/test');
+      const result = await service.getEndpointByPath('/test');
 
       expect(result).toBeDefined();
       expect(result?.path).toBe('/test');
     });
 
-    it('should return null for non-existent path', () => {
-      const result = service.getEndpointByPath('/non-existent');
+    it('should return null for non-existent path', async () => {
+      const result = await service.getEndpointByPath('/non-existent');
       expect(result).toBeNull();
     });
   });
 
   describe('updateEndpoint', () => {
-    it('should update endpoint properties', () => {
-      const created = service.createEndpoint({
+    it('should update endpoint properties', async () => {
+      const created = await service.createEndpoint({
         name: 'Original',
         path: '/original',
         baseUrl: 'https://api.example.com',
       });
 
-      const updated = service.updateEndpoint(created.id, {
+      const updated = await service.updateEndpoint(created.id, {
         name: 'Updated',
         baseUrl: 'https://api2.example.com',
         delayMs: 1000,
@@ -368,76 +369,76 @@ describe('ProxyEndpointService', () => {
       expect(updated?.path).toBe('/original'); // Unchanged
     });
 
-    it('should normalize path when updating', () => {
-      const created = service.createEndpoint({
+    it('should normalize path when updating', async () => {
+      const created = await service.createEndpoint({
         name: 'Test',
         path: '/test',
         baseUrl: 'https://api.example.com',
       });
 
-      const updated = service.updateEndpoint(created.id, {
+      const updated = await service.updateEndpoint(created.id, {
         path: 'new-path',
       });
 
       expect(updated?.path).toBe('/new-path');
     });
 
-    it('should throw error when updating to duplicate path', () => {
-      const first = service.createEndpoint({
+    it('should throw error when updating to duplicate path', async () => {
+      const first = await service.createEndpoint({
         name: 'First',
         path: '/first',
         baseUrl: 'https://api.example.com',
       });
 
-      service.createEndpoint({
+      await service.createEndpoint({
         name: 'Second',
         path: '/second',
         baseUrl: 'https://api.example.com',
       });
 
-      expect(() =>
-        service.updateEndpoint(first.id, { path: '/second' })
-      ).toThrow('Endpoint with path /second already exists');
+      await expect(async () =>
+        await service.updateEndpoint(first.id, { path: '/second' })
+      ).rejects.toThrow('Endpoint with path /second already exists');
     });
 
-    it('should throw error when updating to invalid base URL', () => {
-      const created = service.createEndpoint({
+    it('should throw error when updating to invalid base URL', async () => {
+      const created = await service.createEndpoint({
         name: 'Test',
         path: '/test',
         baseUrl: 'https://api.example.com',
       });
 
-      expect(() =>
-        service.updateEndpoint(created.id, { baseUrl: 'invalid-url' })
-      ).toThrow('Base URL must start with http:// or https://');
+      await expect(async () =>
+        await service.updateEndpoint(created.id, { baseUrl: 'invalid-url' })
+      ).rejects.toThrow('Base URL must start with http:// or https://');
     });
 
-    it('should throw error when updating to invalid status code', () => {
-      const created = service.createEndpoint({
+    it('should throw error when updating to invalid status code', async () => {
+      const created = await service.createEndpoint({
         name: 'Test',
         path: '/test',
         baseUrl: 'https://api.example.com',
       });
 
-      expect(() =>
-        service.updateEndpoint(created.id, { statusCodeOverride: 999 })
-      ).toThrow('Status code override must be between 100 and 599');
+      await expect(async () =>
+        await service.updateEndpoint(created.id, { statusCodeOverride: 999 })
+      ).rejects.toThrow('Status code override must be between 100 and 599');
     });
 
-    it('should throw error when updating to invalid delay', () => {
-      const created = service.createEndpoint({
+    it('should throw error when updating to invalid delay', async () => {
+      const created = await service.createEndpoint({
         name: 'Test',
         path: '/test',
         baseUrl: 'https://api.example.com',
       });
 
-      expect(() =>
-        service.updateEndpoint(created.id, { delayMs: 20000 })
-      ).toThrow('Delay must be between 0 and 10000ms');
+      await expect(async () =>
+        await service.updateEndpoint(created.id, { delayMs: 20000 })
+      ).rejects.toThrow('Delay must be between 0 and 10000ms');
     });
 
-    it('should return null for non-existent id', () => {
-      const result = service.updateEndpoint('non-existent', {
+    it('should return null for non-existent id', async () => {
+      const result = await service.updateEndpoint('non-existent', {
         name: 'Updated',
       });
       expect(result).toBeNull();
@@ -445,49 +446,49 @@ describe('ProxyEndpointService', () => {
   });
 
   describe('deleteEndpoint', () => {
-    it('should delete endpoint by id', () => {
-      const created = service.createEndpoint({
+    it('should delete endpoint by id', async () => {
+      const created = await service.createEndpoint({
         name: 'Test',
         path: '/test',
         baseUrl: 'https://api.example.com',
       });
 
-      const result = service.deleteEndpoint(created.id);
+      const result = await service.deleteEndpoint(created.id);
 
       expect(result).toBe(true);
-      expect(service.getEndpointById(created.id)).toBeNull();
+      expect(await service.getEndpointById(created.id)).toBeNull();
     });
 
-    it('should return false for non-existent id', () => {
-      const result = service.deleteEndpoint('non-existent');
+    it('should return false for non-existent id', async () => {
+      const result = await service.deleteEndpoint('non-existent');
       expect(result).toBe(false);
     });
   });
 
   describe('getStats', () => {
-    it('should return correct stats', () => {
-      service.createEndpoint({
+    it('should return correct stats', async () => {
+      await service.createEndpoint({
         name: 'Enabled 1',
         path: '/enabled1',
         baseUrl: 'https://api.example.com',
         enabled: true,
       });
 
-      service.createEndpoint({
+      await service.createEndpoint({
         name: 'Enabled 2',
         path: '/enabled2',
         baseUrl: 'https://api.example.com',
         enabled: true,
       });
 
-      service.createEndpoint({
+      await service.createEndpoint({
         name: 'Disabled',
         path: '/disabled',
         baseUrl: 'https://api.example.com',
         enabled: false,
       });
 
-      const stats = service.getStats();
+      const stats = await service.getStats();
 
       expect(stats.total).toBe(3);
       expect(stats.enabled).toBe(2);
@@ -496,8 +497,8 @@ describe('ProxyEndpointService', () => {
       expect(stats.remaining).toBe(47);
     });
 
-    it('should return zeros for empty state', () => {
-      const stats = service.getStats();
+    it('should return zeros for empty state', async () => {
+      const stats = await service.getStats();
 
       expect(stats.total).toBe(0);
       expect(stats.enabled).toBe(0);
