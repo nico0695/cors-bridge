@@ -11,6 +11,10 @@ import { MockManagementController } from './controllers/MockManagementController
 import { MockApiController } from './controllers/MockApiController.js';
 import { MockEndpointService } from '../application/services/MockEndpointService.js';
 import { SqliteMockEndpointRepository } from '../infrastructure/repositories/SqliteMockEndpointRepository.js';
+import { ProxyManagementController } from './controllers/ProxyManagementController.js';
+import { ProxyApiController } from './controllers/ProxyApiController.js';
+import { ProxyEndpointService } from '../application/services/ProxyEndpointService.js';
+import { SqliteProxyEndpointRepository } from '../infrastructure/repositories/SqliteProxyEndpointRepository.js';
 import { UserService } from '../application/services/UserService.js';
 import { SqliteUserRepository } from '../infrastructure/repositories/SqliteUserRepository.js';
 import { AuthController } from './controllers/AuthController.js';
@@ -70,6 +74,15 @@ const mockManagementController = new MockManagementController(
   logger
 );
 const mockApiController = new MockApiController(mockEndpointService, logger);
+
+// Proxy API Dependency Injection
+const proxyEndpointRepository = new SqliteProxyEndpointRepository(logger);
+const proxyEndpointService = new ProxyEndpointService(proxyEndpointRepository);
+const proxyManagementController = new ProxyManagementController(
+  proxyEndpointService,
+  logger
+);
+const proxyApiController = new ProxyApiController(proxyEndpointService, logger);
 
 // User/Auth Dependency Injection
 const userRepository = new SqliteUserRepository(logger);
@@ -208,6 +221,31 @@ app.get('/api-mock/stats', (req, res) =>
 
 // Mock API Serve Route (wildcard must be last)
 app.all('/api-mock/serve/*', (req, res) => mockApiController.serve(req, res));
+
+// Proxy API Management Routes
+app.get('/api-proxy/endpoints', (req, res) =>
+  proxyManagementController.getAll(req, res)
+);
+app.get('/api-proxy/endpoints/:id', (req, res) =>
+  proxyManagementController.getById(req, res)
+);
+app.post('/api-proxy/endpoints', (req, res) =>
+  proxyManagementController.create(req, res)
+);
+app.patch('/api-proxy/endpoints/:id', (req, res) =>
+  proxyManagementController.update(req, res)
+);
+app.delete('/api-proxy/endpoints/:id', (req, res) =>
+  proxyManagementController.delete(req, res)
+);
+app.get('/api-proxy/stats', (req, res) =>
+  proxyManagementController.getStats(req, res)
+);
+
+// Proxy API Serve Route (wildcard must be last)
+app.all('/api-proxy/serve/*', (req, res) =>
+  proxyApiController.forward(req, res)
+);
 
 app.get('/health', (req, res) => {
   const stats = feedRepository.getStats();
