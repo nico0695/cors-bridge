@@ -192,7 +192,7 @@ export class ProxyApiController {
     const responseHeaders: Record<string, string> = {};
     this.forwardResponseHeaders(upstreamResponse.headers, res, responseHeaders);
 
-    const responseData = await upstreamResponse.text();
+    const responseData = Buffer.from(await upstreamResponse.arrayBuffer());
     const contentType = upstreamResponse.headers.get('content-type');
 
     if (

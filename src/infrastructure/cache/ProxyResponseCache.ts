@@ -4,7 +4,7 @@ import type { Logger } from 'pino';
 export interface CachedProxyResponse {
   status: number;
   headers: Record<string, string>;
-  body: string;
+  body: string | Buffer;
   contentType: string | null;
   cachedAt: number;
 }
