@@ -1,0 +1,1156 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Custom CRUD Manager</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+          Cantarell, sans-serif;
+        background: #f5f5f5;
+        padding: 20px;
+        line-height: 1.6;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      header {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      h1 {
+        color: #333;
+        margin-bottom: 10px;
+      }
+
+      .stats {
+        display: flex;
+        gap: 20px;
+        color: #666;
+        font-size: 14px;
+        flex-wrap: wrap;
+      }
+
+      .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .stat-value {
+        font-weight: bold;
+        color: #333;
+      }
+
+      .warning {
+        color: #ff6b6b;
+      }
+
+      .success {
+        color: #51cf66;
+      }
+
+      .actions {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .auth-section {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .auth-section input {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+        width: 260px;
+      }
+
+      .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s;
+      }
+
+      .btn-primary {
+        background: #339af0;
+        color: white;
+      }
+
+      .btn-primary:hover {
+        background: #228be6;
+      }
+
+      .btn-danger {
+        background: #ff6b6b;
+        color: white;
+      }
+
+      .btn-danger:hover {
+        background: #fa5252;
+      }
+
+      .btn-secondary {
+        background: #868e96;
+        color: white;
+      }
+
+      .btn-secondary:hover {
+        background: #6c757d;
+      }
+
+      .btn-outline {
+        background: transparent;
+        border: 1px solid #339af0;
+        color: #339af0;
+      }
+
+      .btn-outline:hover {
+        background: #e7f5ff;
+      }
+
+      .btn-small {
+        padding: 6px 12px;
+        font-size: 12px;
+      }
+
+      .tables-list {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .empty-state {
+        padding: 40px;
+        text-align: center;
+        color: #868e96;
+      }
+
+      .table-item {
+        padding: 20px;
+        border-bottom: 1px solid #e9ecef;
+      }
+
+      .table-item:last-child {
+        border-bottom: none;
+      }
+
+      .table-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .table-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .table-name {
+        font-weight: 600;
+        color: #333;
+        font-size: 16px;
+      }
+
+      .table-path {
+        color: #495057;
+        font-family: 'Courier New', monospace;
+        font-size: 14px;
+        background: #f1f3f5;
+        padding: 4px 8px;
+        border-radius: 4px;
+      }
+
+      .table-controls {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-shrink: 0;
+      }
+
+      .toggle {
+        position: relative;
+        width: 50px;
+        height: 24px;
+      }
+
+      .toggle input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: 0.3s;
+        border-radius: 24px;
+      }
+
+      .toggle-slider:before {
+        position: absolute;
+        content: '';
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.3s;
+        border-radius: 50%;
+      }
+
+      .toggle input:checked + .toggle-slider {
+        background-color: #51cf66;
+      }
+
+      .toggle input:checked + .toggle-slider:before {
+        transform: translateX(26px);
+      }
+
+      .table-details {
+        display: none;
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid #e9ecef;
+      }
+
+      .table-details.open {
+        display: block;
+      }
+
+      .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 15px;
+      }
+
+      .detail-item {
+        font-size: 14px;
+      }
+
+      .detail-label {
+        color: #868e96;
+        font-size: 12px;
+        margin-bottom: 4px;
+      }
+
+      .detail-value {
+        color: #333;
+        font-weight: 500;
+      }
+
+      .schema-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 4px;
+      }
+
+      .schema-tag {
+        background: #e7f5ff;
+        color: #1c7ed6;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-family: 'Courier New', monospace;
+      }
+
+      .schema-tag.required {
+        background: #fff0f6;
+        color: #c2255c;
+      }
+
+      .endpoints-preview {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 6px;
+        margin-top: 10px;
+      }
+
+      .endpoints-preview h4 {
+        font-size: 13px;
+        color: #495057;
+        margin-bottom: 10px;
+      }
+
+      .endpoint-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 6px;
+        font-size: 13px;
+      }
+
+      .method-badge {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 11px;
+        font-weight: 700;
+        font-family: monospace;
+        min-width: 52px;
+        text-align: center;
+      }
+
+      .method-get { background: #d3f9d8; color: #2f9e44; }
+      .method-post { background: #d0ebff; color: #1971c2; }
+      .method-put { background: #fff3bf; color: #e67700; }
+      .method-patch { background: #f3d9fa; color: #862e9c; }
+      .method-delete { background: #ffe3e3; color: #c92a2a; }
+
+      .endpoint-url {
+        font-family: 'Courier New', monospace;
+        color: #495057;
+        cursor: pointer;
+      }
+
+      .endpoint-url:hover {
+        color: #339af0;
+        text-decoration: underline;
+      }
+
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        overflow-y: auto;
+      }
+
+      .modal.open {
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        padding: 20px;
+      }
+
+      .modal-content {
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 680px;
+        max-height: 90vh;
+        overflow-y: auto;
+        margin: auto;
+      }
+
+      .modal-content.modal-wide {
+        max-width: 900px;
+      }
+
+      .modal-header {
+        margin-bottom: 20px;
+      }
+
+      .modal-header h2 {
+        font-size: 20px;
+        color: #333;
+      }
+
+      .form-group {
+        margin-bottom: 16px;
+      }
+
+      label {
+        display: block;
+        font-size: 14px;
+        font-weight: 500;
+        color: #495057;
+        margin-bottom: 6px;
+      }
+
+      input[type='text'],
+      input[type='number'],
+      select,
+      textarea {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+        color: #333;
+        transition: border-color 0.2s;
+      }
+
+      input:focus,
+      select:focus,
+      textarea:focus {
+        outline: none;
+        border-color: #339af0;
+      }
+
+      .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .checkbox-group input {
+        width: auto;
+      }
+
+      .schema-builder {
+        border: 1px solid #e9ecef;
+        border-radius: 6px;
+        padding: 15px;
+        margin-top: 6px;
+      }
+
+      .schema-field-row {
+        display: grid;
+        grid-template-columns: 1fr 130px 80px 36px;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .schema-field-row input,
+      .schema-field-row select {
+        padding: 7px 10px;
+        font-size: 13px;
+      }
+
+      .schema-field-row .req-label {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 13px;
+        white-space: nowrap;
+      }
+
+      .schema-field-row .req-label input {
+        width: auto;
+      }
+
+      .btn-remove-field {
+        background: #ff6b6b;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        width: 32px;
+        height: 32px;
+        cursor: pointer;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .btn-remove-field:hover {
+        background: #fa5252;
+      }
+
+      .basepath-preview {
+        background: #f8f9fa;
+        border-radius: 6px;
+        padding: 12px;
+        margin-top: 8px;
+        font-size: 12px;
+        display: none;
+      }
+
+      .basepath-preview .prev-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 4px;
+      }
+
+      .basepath-preview .prev-row:last-child {
+        margin-bottom: 0;
+      }
+
+      .modal-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 20px;
+        padding-top: 15px;
+        border-top: 1px solid #e9ecef;
+      }
+
+      .error-message {
+        color: #ff6b6b;
+        font-size: 13px;
+        margin-top: 8px;
+      }
+
+      .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+        margin-top: 10px;
+      }
+
+      .data-table th {
+        background: #f8f9fa;
+        padding: 10px 12px;
+        text-align: left;
+        font-size: 12px;
+        color: #868e96;
+        font-weight: 600;
+        border-bottom: 2px solid #e9ecef;
+      }
+
+      .data-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #f1f3f5;
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .data-table tr:hover td {
+        background: #f8f9fa;
+      }
+
+      .data-table-wrap {
+        overflow-x: auto;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+
+      .entries-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+      }
+
+      .entries-count {
+        font-size: 13px;
+        color: #868e96;
+      }
+
+      .toast {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: #333;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 6px;
+        font-size: 14px;
+        z-index: 9999;
+        opacity: 0;
+        transform: translateY(10px);
+        transition: all 0.3s;
+        max-width: 350px;
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .toast.error {
+        background: #ff6b6b;
+      }
+
+      .loading {
+        text-align: center;
+        padding: 40px;
+        color: #868e96;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Custom CRUD Manager</h1>
+        <div class="stats" id="stats">
+          <span class="stat-item">Loading...</span>
+        </div>
+      </header>
+
+      <div class="actions">
+        <button class="btn btn-primary" id="btnNew">+ New CRUD Table</button>
+        <div class="auth-section">
+          <input
+            type="password"
+            id="tokenInput"
+            placeholder="Bearer token (from login)"
+          />
+          <button class="btn btn-secondary btn-small" onclick="loadAll()">
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      <div class="tables-list" id="tablesList">
+        <div class="loading">Enter your token and click Refresh to load tables.</div>
+      </div>
+    </div>
+
+    <!-- Create / Edit Modal -->
+    <div class="modal" id="formModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="formTitle">New CRUD Table</h2>
+        </div>
+        <div id="formError" class="error-message" style="display: none"></div>
+
+        <div class="form-group">
+          <label>Name</label>
+          <input type="text" id="fName" placeholder="e.g. Product Catalog" />
+        </div>
+
+        <div class="form-group">
+          <label>Base Path</label>
+          <input
+            type="text"
+            id="fBasePath"
+            placeholder="e.g. products"
+            oninput="updateBasePathPreview()"
+            onblur="updateBasePathPreview()"
+          />
+          <div class="basepath-preview" id="basePathPreview"></div>
+        </div>
+
+        <div class="form-group">
+          <label>Max Entries <small style="color:#868e96">(default 15, max 1000)</small></label>
+          <input type="number" id="fMaxEntries" value="15" min="1" max="1000" />
+        </div>
+
+        <div class="form-group">
+          <div class="checkbox-group">
+            <input type="checkbox" id="fEnabled" checked />
+            <label for="fEnabled" style="margin:0">Enabled</label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Schema Fields</label>
+          <div class="schema-builder">
+            <div id="schemaFields"></div>
+            <button class="btn btn-outline btn-small" onclick="addSchemaField()">
+              + Add Field
+            </button>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-secondary" onclick="closeFormModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="saveTable()">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- View Data Modal -->
+    <div class="modal" id="dataModal">
+      <div class="modal-content modal-wide">
+        <div class="modal-header">
+          <h2 id="dataModalTitle">Entries</h2>
+        </div>
+        <div class="entries-header">
+          <span class="entries-count" id="entriesCount"></span>
+        </div>
+        <div class="data-table-wrap">
+          <table class="data-table" id="entriesTable">
+            <thead id="entriesHead"></thead>
+            <tbody id="entriesBody"></tbody>
+          </table>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" onclick="closeDataModal()">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+      const API = '/api-crud';
+      let editingId = null;
+      let currentDataBasePath = null;
+      let currentDataSchema = null;
+      let currentDataTableMaxEntries = null;
+
+      function token() {
+        return document.getElementById('tokenInput').value.trim();
+      }
+
+      function authHeaders() {
+        return {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token()}`,
+        };
+      }
+
+      function showToast(msg, isError = false) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = 'toast show' + (isError ? ' error' : '');
+        setTimeout(() => {
+          t.className = 'toast';
+        }, 3000);
+      }
+
+      async function loadStats() {
+        try {
+          const r = await fetch(`${API}/stats`, { headers: authHeaders() });
+          if (!r.ok) return;
+          const s = await r.json();
+          const el = document.getElementById('stats');
+          if (s.maxTables === null) {
+            el.innerHTML = `
+              <span class="stat-item">Total: <span class="stat-value">${s.total}</span></span>
+              <span class="stat-item">Enabled: <span class="stat-value success">${s.enabled}</span></span>
+              <span class="stat-item">Disabled: <span class="stat-value warning">${s.disabled}</span></span>
+              <span class="stat-item"><strong>Admin — unlimited tables</strong></span>`;
+          } else {
+            el.innerHTML = `
+              <span class="stat-item">Total: <span class="stat-value">${s.total}</span></span>
+              <span class="stat-item">Enabled: <span class="stat-value success">${s.enabled}</span></span>
+              <span class="stat-item">Disabled: <span class="stat-value warning">${s.disabled}</span></span>
+              <span class="stat-item">Tables: <span class="stat-value">${s.total} / ${s.maxTables}</span></span>
+              <span class="stat-item">Remaining: <span class="stat-value ${s.remaining === 0 ? 'warning' : ''}">${s.remaining}</span></span>`;
+          }
+        } catch (e) {
+          // silent
+        }
+      }
+
+      async function loadAll() {
+        await Promise.all([loadStats(), loadTables()]);
+      }
+
+      async function loadTables() {
+        const el = document.getElementById('tablesList');
+        el.innerHTML = '<div class="loading">Loading...</div>';
+        try {
+          const r = await fetch(`${API}/tables`, { headers: authHeaders() });
+          if (!r.ok) {
+            const err = await r.json().catch(() => ({}));
+            el.innerHTML = `<div class="empty-state">${err.error || 'Failed to load. Check your token.'}</div>`;
+            return;
+          }
+          const tables = await r.json();
+          if (!tables.length) {
+            el.innerHTML = '<div class="empty-state">No CRUD tables yet. Create one to get started.</div>';
+            return;
+          }
+          el.innerHTML = tables.map(renderTable).join('');
+        } catch (e) {
+          el.innerHTML = '<div class="empty-state">Network error. Is the server running?</div>';
+        }
+      }
+
+      function renderTable(t) {
+        const schemaHtml = t.schema
+          .map(
+            (f) =>
+              `<span class="schema-tag ${f.required ? 'required' : ''}" title="${f.type}${f.required ? ', required' : ''}">${f.name}: ${f.type}${f.required ? '*' : ''}</span>`
+          )
+          .join('');
+
+        const endpointsHtml = buildEndpointsHtml(t.basePath);
+
+        return `
+          <div class="table-item" id="item-${t.id}">
+            <div class="table-header">
+              <div class="table-title">
+                <span class="table-name">${escHtml(t.name)}</span>
+                <span class="table-path">${escHtml(t.basePath)}</span>
+              </div>
+              <div class="table-controls">
+                <label class="toggle" title="${t.enabled ? 'Enabled' : 'Disabled'}">
+                  <input type="checkbox" ${t.enabled ? 'checked' : ''} onchange="toggleEnabled('${t.id}', this.checked)" />
+                  <span class="toggle-slider"></span>
+                </label>
+                <button class="btn btn-outline btn-small" onclick="openDataModal('${t.id}', '${escHtml(t.basePath)}', '${t.name}', ${t.maxEntries})">View Data</button>
+                <button class="btn btn-primary btn-small" onclick="openEdit('${t.id}')">Edit</button>
+                <button class="btn btn-danger btn-small" onclick="deleteTable('${t.id}', '${escHtml(t.name)}')">Delete</button>
+              </div>
+            </div>
+
+            <div style="font-size:13px;color:#868e96;margin-bottom:8px;">
+              Schema:
+              <span class="schema-tags">${schemaHtml}</span>
+            </div>
+
+            <button class="btn btn-outline btn-small" onclick="toggleDetails('${t.id}')">
+              Show Endpoints &amp; Details
+            </button>
+
+            <div class="table-details" id="details-${t.id}">
+              <div class="detail-grid">
+                <div class="detail-item">
+                  <div class="detail-label">Max Entries</div>
+                  <div class="detail-value">${t.maxEntries}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">Owner ID</div>
+                  <div class="detail-value" style="font-size:12px;font-family:monospace">${t.ownerUserId}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">Created</div>
+                  <div class="detail-value">${new Date(t.createdAt).toLocaleString()}</div>
+                </div>
+              </div>
+              ${endpointsHtml}
+            </div>
+          </div>`;
+      }
+
+      function buildEndpointsHtml(basePath) {
+        const base = `/api-crud/serve/${basePath}`;
+        const rows = [
+          { method: 'POST', url: base, desc: 'Create entry' },
+          { method: 'GET', url: base, desc: 'List all entries' },
+          { method: 'GET', url: `${base}/:id`, desc: 'Get entry by id' },
+          { method: 'PUT', url: `${base}/:id`, desc: 'Full replace' },
+          { method: 'PATCH', url: `${base}/:id`, desc: 'Partial update' },
+          { method: 'DELETE', url: `${base}/:id`, desc: 'Delete entry' },
+        ];
+        const rowsHtml = rows
+          .map(
+            (r) => `
+          <div class="endpoint-row">
+            <span class="method-badge method-${r.method.toLowerCase()}">${r.method}</span>
+            <span class="endpoint-url" onclick="copyText('${r.url}')" title="Click to copy">${r.url}</span>
+            <span style="color:#868e96;font-size:12px">${r.desc}</span>
+          </div>`
+          )
+          .join('');
+        return `<div class="endpoints-preview"><h4>Endpoints (click URL to copy)</h4>${rowsHtml}</div>`;
+      }
+
+      function toggleDetails(id) {
+        const el = document.getElementById(`details-${id}`);
+        el.classList.toggle('open');
+      }
+
+      async function toggleEnabled(id, enabled) {
+        try {
+          const r = await fetch(`${API}/tables/${id}`, {
+            method: 'PATCH',
+            headers: authHeaders(),
+            body: JSON.stringify({ enabled }),
+          });
+          if (!r.ok) {
+            const err = await r.json().catch(() => ({}));
+            showToast(err.error || 'Failed to update', true);
+            loadAll();
+            return;
+          }
+          showToast(enabled ? 'Table enabled' : 'Table disabled');
+        } catch {
+          showToast('Network error', true);
+        }
+      }
+
+      async function deleteTable(id, name) {
+        if (!confirm(`Delete CRUD table "${name}" and ALL its entries? This cannot be undone.`)) return;
+        try {
+          const r = await fetch(`${API}/tables/${id}`, {
+            method: 'DELETE',
+            headers: authHeaders(),
+          });
+          if (r.status === 204) {
+            showToast('Table deleted');
+            loadAll();
+          } else {
+            const err = await r.json().catch(() => ({}));
+            showToast(err.error || 'Failed to delete', true);
+          }
+        } catch {
+          showToast('Network error', true);
+        }
+      }
+
+      // ── Form Modal ─────────────────────────────────────────────────────────
+
+      document.getElementById('btnNew').onclick = openCreate;
+
+      function openCreate() {
+        editingId = null;
+        document.getElementById('formTitle').textContent = 'New CRUD Table';
+        document.getElementById('fName').value = '';
+        document.getElementById('fBasePath').value = '';
+        document.getElementById('fMaxEntries').value = '15';
+        document.getElementById('fEnabled').checked = true;
+        document.getElementById('formError').style.display = 'none';
+        document.getElementById('schemaFields').innerHTML = '';
+        document.getElementById('basePathPreview').style.display = 'none';
+        addSchemaField();
+        document.getElementById('formModal').classList.add('open');
+      }
+
+      async function openEdit(id) {
+        try {
+          const r = await fetch(`${API}/tables/${id}`, { headers: authHeaders() });
+          if (!r.ok) { showToast('Failed to load table', true); return; }
+          const t = await r.json();
+          editingId = id;
+          document.getElementById('formTitle').textContent = 'Edit CRUD Table';
+          document.getElementById('fName').value = t.name;
+          document.getElementById('fBasePath').value = t.basePath;
+          document.getElementById('fMaxEntries').value = t.maxEntries;
+          document.getElementById('fEnabled').checked = t.enabled;
+          document.getElementById('formError').style.display = 'none';
+          document.getElementById('schemaFields').innerHTML = '';
+          t.schema.forEach((f) => addSchemaField(f.name, f.type, f.required));
+          updateBasePathPreview();
+          document.getElementById('formModal').classList.add('open');
+        } catch {
+          showToast('Network error', true);
+        }
+      }
+
+      function closeFormModal() {
+        document.getElementById('formModal').classList.remove('open');
+      }
+
+      function addSchemaField(name = '', type = 'string', required = false) {
+        const container = document.getElementById('schemaFields');
+        const idx = Date.now() + Math.random();
+        const div = document.createElement('div');
+        div.className = 'schema-field-row';
+        div.innerHTML = `
+          <input type="text" placeholder="field name" value="${escHtml(name)}" class="field-name" />
+          <select class="field-type">
+            <option value="string" ${type === 'string' ? 'selected' : ''}>string</option>
+            <option value="number" ${type === 'number' ? 'selected' : ''}>number</option>
+            <option value="boolean" ${type === 'boolean' ? 'selected' : ''}>boolean</option>
+            <option value="date" ${type === 'date' ? 'selected' : ''}>date</option>
+          </select>
+          <label class="req-label">
+            <input type="checkbox" ${required ? 'checked' : ''} class="field-required" />
+            req
+          </label>
+          <button class="btn-remove-field" onclick="this.parentElement.remove()">×</button>`;
+        container.appendChild(div);
+      }
+
+      function collectSchema() {
+        const rows = document.querySelectorAll('#schemaFields .schema-field-row');
+        return Array.from(rows).map((row) => ({
+          name: row.querySelector('.field-name').value.trim(),
+          type: row.querySelector('.field-type').value,
+          required: row.querySelector('.field-required').checked,
+        }));
+      }
+
+      function updateBasePathPreview() {
+        const raw = document.getElementById('fBasePath').value.trim();
+        const preview = document.getElementById('basePathPreview');
+        if (!raw) { preview.style.display = 'none'; return; }
+        const bp = raw.toLowerCase().replace(/^\/+|\/+$/g, '');
+        const base = `/api-crud/serve/${bp}`;
+        const rows = [
+          { method: 'POST', url: base },
+          { method: 'GET', url: base },
+          { method: 'GET', url: `${base}/:id` },
+          { method: 'PUT', url: `${base}/:id` },
+          { method: 'PATCH', url: `${base}/:id` },
+          { method: 'DELETE', url: `${base}/:id` },
+        ];
+        preview.innerHTML = rows
+          .map(
+            (r) =>
+              `<div class="prev-row"><span class="method-badge method-${r.method.toLowerCase()}">${r.method}</span><span style="font-family:monospace;font-size:12px;color:#495057">${r.url}</span></div>`
+          )
+          .join('');
+        preview.style.display = 'block';
+      }
+
+      async function saveTable() {
+        const errEl = document.getElementById('formError');
+        errEl.style.display = 'none';
+
+        const body = {
+          name: document.getElementById('fName').value.trim(),
+          basePath: document.getElementById('fBasePath').value.trim(),
+          maxEntries: parseInt(document.getElementById('fMaxEntries').value, 10),
+          enabled: document.getElementById('fEnabled').checked,
+          schema: collectSchema(),
+        };
+
+        const url = editingId ? `${API}/tables/${editingId}` : `${API}/tables`;
+        const method = editingId ? 'PATCH' : 'POST';
+
+        try {
+          const r = await fetch(url, {
+            method,
+            headers: authHeaders(),
+            body: JSON.stringify(body),
+          });
+          const data = await r.json();
+          if (!r.ok) {
+            errEl.textContent = data.error || 'Save failed';
+            errEl.style.display = 'block';
+            return;
+          }
+          closeFormModal();
+          showToast(editingId ? 'Table updated' : 'Table created');
+          loadAll();
+        } catch {
+          errEl.textContent = 'Network error';
+          errEl.style.display = 'block';
+        }
+      }
+
+      // ── Data Modal ─────────────────────────────────────────────────────────
+
+      async function openDataModal(tableId, basePath, tableName, maxEntries) {
+        currentDataBasePath = basePath;
+        currentDataTableMaxEntries = maxEntries;
+
+        // Fetch schema for this table
+        try {
+          const r = await fetch(`${API}/tables/${tableId}`, { headers: authHeaders() });
+          if (r.ok) {
+            const t = await r.json();
+            currentDataSchema = t.schema;
+          }
+        } catch { /* ignore */ }
+
+        document.getElementById('dataModalTitle').textContent =
+          `Entries for: ${tableName} (${basePath})`;
+        document.getElementById('dataModal').classList.add('open');
+        await loadEntries(basePath);
+      }
+
+      function closeDataModal() {
+        document.getElementById('dataModal').classList.remove('open');
+        currentDataBasePath = null;
+        currentDataSchema = null;
+      }
+
+      async function loadEntries(basePath) {
+        const head = document.getElementById('entriesHead');
+        const body = document.getElementById('entriesBody');
+        const countEl = document.getElementById('entriesCount');
+
+        head.innerHTML = '';
+        body.innerHTML = '<tr><td colspan="99" style="padding:20px;color:#868e96">Loading...</td></tr>';
+
+        try {
+          const r = await fetch(`/api-crud/serve/${basePath}`);
+          if (!r.ok) {
+            const err = await r.json().catch(() => ({}));
+            body.innerHTML = `<tr><td colspan="99" style="padding:20px;color:#ff6b6b">${err.error || 'Failed to load entries'}</td></tr>`;
+            return;
+          }
+          const entries = await r.json();
+          countEl.textContent = `${entries.length} / ${currentDataTableMaxEntries ?? '?'} entries`;
+
+          const schemaFields = currentDataSchema ? currentDataSchema.map((f) => f.name) : [];
+          const cols = ['id', ...schemaFields, 'createdAt'];
+
+          head.innerHTML = `<tr>${cols.map((c) => `<th>${c}</th>`).join('')}<th></th></tr>`;
+
+          if (!entries.length) {
+            body.innerHTML = '<tr><td colspan="99" style="padding:20px;color:#868e96;text-align:center">No entries yet. Use the API to create entries.</td></tr>';
+            return;
+          }
+
+          body.innerHTML = entries
+            .map((e) => {
+              const cells = cols
+                .map((c) => {
+                  let v = e[c];
+                  if (v instanceof Object) v = JSON.stringify(v);
+                  if (c === 'createdAt') v = new Date(v).toLocaleString();
+                  return `<td title="${escHtml(String(v ?? ''))}">${escHtml(String(v ?? ''))}</td>`;
+                })
+                .join('');
+              return `<tr>${cells}<td><button class="btn btn-danger btn-small" onclick="deleteEntry('${escHtml(basePath)}', '${e.id}')">Delete</button></td></tr>`;
+            })
+            .join('');
+        } catch {
+          body.innerHTML = '<tr><td colspan="99" style="padding:20px;color:#ff6b6b">Network error</td></tr>';
+        }
+      }
+
+      async function deleteEntry(basePath, entryId) {
+        if (!confirm('Delete this entry?')) return;
+        try {
+          const r = await fetch(`/api-crud/serve/${basePath}/${entryId}`, {
+            method: 'DELETE',
+          });
+          if (r.status === 204) {
+            showToast('Entry deleted');
+            await loadEntries(basePath);
+            await loadStats();
+          } else {
+            const err = await r.json().catch(() => ({}));
+            showToast(err.error || 'Failed to delete entry', true);
+          }
+        } catch {
+          showToast('Network error', true);
+        }
+      }
+
+      // ── Utilities ──────────────────────────────────────────────────────────
+
+      function escHtml(str) {
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function copyText(text) {
+        navigator.clipboard
+          .writeText(window.location.origin + text)
+          .then(() => showToast('URL copied!'))
+          .catch(() => showToast('Copy failed', true));
+      }
+
+      // Close modals when clicking backdrop
+      document.getElementById('formModal').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) closeFormModal();
+      });
+      document.getElementById('dataModal').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) closeDataModal();
+      });
+    </script>
+  </body>
+</html>

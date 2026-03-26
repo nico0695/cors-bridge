@@ -17,6 +17,11 @@ import { ProxyApiController } from './controllers/ProxyApiController.js';
 import { ProxyEndpointService } from '../application/services/ProxyEndpointService.js';
 import { TypeOrmProxyEndpointRepository } from '../infrastructure/repositories/TypeOrmProxyEndpointRepository.js';
 import { ProxyResponseCache } from '../infrastructure/cache/ProxyResponseCache.js';
+import { CrudService } from '../application/services/CrudService.js';
+import { TypeOrmCrudTableRepository } from '../infrastructure/repositories/TypeOrmCrudTableRepository.js';
+import { TypeOrmCrudEntryRepository } from '../infrastructure/repositories/TypeOrmCrudEntryRepository.js';
+import { CrudManagementController } from './controllers/CrudManagementController.js';
+import { CrudApiController } from './controllers/CrudApiController.js';
 import { UserService } from '../application/services/UserService.js';
 import { TypeOrmUserRepository } from '../infrastructure/repositories/TypeOrmUserRepository.js';
 import { AuthController } from './controllers/AuthController.js';
@@ -329,6 +334,57 @@ async function initializeApp(): Promise<void> {
   app.all('/api-proxy/serve/*', (req, res) =>
     proxyApiController.forward(req, res)
   );
+
+  // CRUD Dependency Injection
+  const crudTableRepository = new TypeOrmCrudTableRepository(logger);
+  const crudEntryRepository = new TypeOrmCrudEntryRepository(logger);
+  const crudService = new CrudService(crudTableRepository, crudEntryRepository);
+  const crudManagementController = new CrudManagementController(
+    crudService,
+    logger
+  );
+  const crudApiController = new CrudApiController(crudService, logger);
+
+  // CRUD Management Routes (authenticated)
+  app.get(
+    '/api-crud/tables',
+    authMiddleware.requireAuth,
+    requireAuthenticatedUser,
+    (req, res) => crudManagementController.getAll(req, res)
+  );
+  app.get(
+    '/api-crud/tables/:id',
+    authMiddleware.requireAuth,
+    requireAuthenticatedUser,
+    (req, res) => crudManagementController.getById(req, res)
+  );
+  app.post(
+    '/api-crud/tables',
+    authMiddleware.requireAuth,
+    requireAuthenticatedUser,
+    (req, res) => crudManagementController.create(req, res)
+  );
+  app.patch(
+    '/api-crud/tables/:id',
+    authMiddleware.requireAuth,
+    requireAuthenticatedUser,
+    (req, res) => crudManagementController.update(req, res)
+  );
+  app.delete(
+    '/api-crud/tables/:id',
+    authMiddleware.requireAuth,
+    requireAuthenticatedUser,
+    (req, res) => crudManagementController.delete(req, res)
+  );
+  app.get(
+    '/api-crud/stats',
+    authMiddleware.requireAuth,
+    requireAuthenticatedUser,
+    (req, res) => crudManagementController.getStats(req, res)
+  );
+
+  // CRUD Serve Route (public — wildcard must be last in this group)
+  app.all('/api-crud/serve/*', (req, res) => crudApiController.serve(req, res));
 
   app.get('/health', (req, res) => {
     const stats = feedRepository.getStats();

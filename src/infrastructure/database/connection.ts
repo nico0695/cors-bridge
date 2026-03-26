@@ -4,6 +4,8 @@ import { dirname } from 'node:path';
 import { UserEntity } from './entities/UserEntity.js';
 import { MockEndpointEntity } from './entities/MockEndpointEntity.js';
 import { ProxyEndpointEntity } from './entities/ProxyEndpointEntity.js';
+import { CrudTableEntity } from './entities/CrudTableEntity.js';
+import { CrudEntryEntity } from './entities/CrudEntryEntity.js';
 
 const dbPath = 'data/main.db';
 
@@ -17,7 +19,13 @@ export const AppDataSource = new DataSource({
   database: dbPath,
   synchronize: true,
   logging: false,
-  entities: [UserEntity, MockEndpointEntity, ProxyEndpointEntity],
+  entities: [
+    UserEntity,
+    MockEndpointEntity,
+    ProxyEndpointEntity,
+    CrudTableEntity,
+    CrudEntryEntity,
+  ],
 });
 
 let initialized = false;
