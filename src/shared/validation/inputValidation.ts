@@ -217,9 +217,70 @@ export function validatePublicHttpUrl(
       `${fieldName} must not include embedded credentials`
     );
   }
-  if (isBlockedHostname(parsed.hostname)) {
+
+  // Additional safeguard against SSRF: explicitly block non-public IP literals
+  function isBlockedIpLiteral(hostname: string): boolean {
+    // Check for IPv4 literal
+    const ipv4Match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (ipv4Match) {
+      const octets = ipv4Match.slice(1).map((part) => Number(part));
+      if (octets.some((o) => Number.isNaN(o) || o < 0 || o > 255)) {
+        return false;
+      }
+      const [a, b, c, d] = octets;
+      const addr = (a << 24) | (b << 16) | (c << 8) | d;
+
+      // Helper to build netmask-based ranges
+      const inRange = (base: number, mask: number) => (addr & mask) === base;
+
+      // 10.0.0.0/8
+      if (inRange(0x0a000000, 0xff000000)) return true;
+      // 127.0.0.0/8 (loopback)
+      if (inRange(0x7f000000, 0xff000000)) return true;
+      // 172.16.0.0/12
+      if (inRange(0xac100000, 0xfff00000)) return true;
+      // 192.168.0.0/16
+      if (inRange(0xc0a80000, 0xffff0000)) return true;
+      // 169.254.0.0/16 (link-local)
+      if (inRange(0xa9fe0000, 0xffff0000)) return true;
+      // 0.0.0.0/8 (software)
+      if (inRange(0x00000000, 0xff000000)) return true;
+      // 100.64.0.0/10 (carrier-grade NAT)
+      if (inRange(0x64400000, 0xffc00000)) return true;
+      // 192.0.0.0/24 (IETF protocol assignments)
+      if (inRange(0xc0000000, 0xffffff00)) return true;
+      // 192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24 (TEST-NET*)
+      if (inRange(0xc0000200, 0xffffff00)) return true;
+      if (inRange(0xc6336400, 0xffffff00)) return true;
+      if (inRange(0xcb007100, 0xffffff00)) return true;
+      // 198.18.0.0/15 (benchmarking)
+      if (inRange(0xc6120000, 0xfffe0000)) return true;
+      // 224.0.0.0/4 (multicast) and 240.0.0.0/4 (reserved)
+      if ((addr & 0xf0000000) === 0xe0000000) return true;
+      if ((addr & 0xf0000000) === 0xf0000000) return true;
+
+      return false;
+    }
+
+    // Check for IPv6 literal (very lightweight classification)
+    if (hostname.includes(':')) {
+      const h = hostname.toLowerCase();
+      // Loopback
+      if (h === '::1') return true;
+      // Unique local addresses fc00::/7 (fc00::/8 and fd00::/8)
+      if (h.startsWith('fc') || h.startsWith('fd')) return true;
+      // Link-local fe80::/10 (fe80:: through febf::)
+      if (h.startsWith('fe8') || h.startsWith('fe9') || h.startsWith('fea') || h.startsWith('feb')) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  if (isBlockedHostname(parsed.hostname) || isBlockedIpLiteral(parsed.hostname)) {
     throw new InputValidationError(
-      `${fieldName} must not target localhost or private IP ranges`
+      `${fieldName} must not target localhost or non-public IP ranges`
     );
   }
 
