@@ -4,6 +4,15 @@ import type {
   CreateMockEndpointDto,
   UpdateMockEndpointDto,
 } from '../../domain/MockEndpoint.js';
+import {
+  normalizeEndpointPath,
+  normalizeOptionalGroupId,
+  normalizeRequiredName,
+  validateDelayMs,
+  validateHttpStatusCode,
+  validateMockContentType,
+  validateResponseData,
+} from '../../shared/validation/inputValidation.js';
 
 const MAX_ENDPOINTS = 50;
 
@@ -30,10 +39,22 @@ export class MockEndpointService {
       );
     }
 
-    // Normalize path
-    const normalizedPath = dto.path.startsWith('/') ? dto.path : `/${dto.path}`;
+    const name = normalizeRequiredName(dto.name);
+    const normalizedPath = normalizeEndpointPath(dto.path);
+    const groupId = normalizeOptionalGroupId(dto.groupId);
+    const contentType =
+      dto.contentType === undefined
+        ? 'application/json'
+        : validateMockContentType(dto.contentType);
+    const statusCode =
+      dto.statusCode === undefined
+        ? 200
+        : validateHttpStatusCode(dto.statusCode, 'Status code');
+    const delayMs =
+      dto.delayMs === undefined ? 0 : validateDelayMs(dto.delayMs);
 
-    // Check if path already exists
+    validateResponseData(dto.responseData);
+
     const existing = await this.repository.findByPath(normalizedPath);
     if (existing) {
       throw new Error(`Endpoint with path ${normalizedPath} already exists`);
@@ -41,7 +62,12 @@ export class MockEndpointService {
 
     return this.repository.save({
       ...dto,
+      name,
       path: normalizedPath,
+      groupId,
+      contentType,
+      statusCode,
+      delayMs,
     });
   }
 
@@ -49,16 +75,37 @@ export class MockEndpointService {
     id: string,
     dto: UpdateMockEndpointDto
   ): Promise<MockEndpoint | null> {
-    // If path is being updated, normalize and check uniqueness
-    if (dto.path) {
-      const normalizedPath = dto.path.startsWith('/')
-        ? dto.path
-        : `/${dto.path}`;
+    if (dto.name !== undefined) {
+      dto.name = normalizeRequiredName(dto.name);
+    }
+
+    if (dto.path !== undefined) {
+      const normalizedPath = normalizeEndpointPath(dto.path);
       const existing = await this.repository.findByPath(normalizedPath);
       if (existing && existing.id !== id) {
         throw new Error(`Endpoint with path ${normalizedPath} already exists`);
       }
       dto.path = normalizedPath;
+    }
+
+    if (dto.groupId !== undefined) {
+      dto.groupId = normalizeOptionalGroupId(dto.groupId);
+    }
+
+    if (dto.contentType !== undefined) {
+      dto.contentType = validateMockContentType(dto.contentType);
+    }
+
+    if (dto.statusCode !== undefined) {
+      dto.statusCode = validateHttpStatusCode(dto.statusCode, 'Status code');
+    }
+
+    if (dto.delayMs !== undefined) {
+      dto.delayMs = validateDelayMs(dto.delayMs);
+    }
+
+    if (dto.responseData !== undefined) {
+      validateResponseData(dto.responseData);
     }
 
     return this.repository.update(id, dto);

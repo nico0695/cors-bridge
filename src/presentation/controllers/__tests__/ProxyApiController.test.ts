@@ -63,13 +63,34 @@ describe('ProxyApiController', () => {
   });
 
   describe('forward', () => {
-    it('should return 404 when endpoint not found', async () => {
-      mockRequest.params = { '0': 'users' };
-      mockService.getEndpointByPath.mockReturnValue(null);
+    it('should return 400 for a blocked direct proxy URL', async () => {
+      mockRequest.params = {};
+      mockRequest.url = '/api-proxy/serve?url=http://localhost:3000';
 
       await controller.forward(
-        mockRequest as Request,
-        mockResponse as Response
+        mockRequest as unknown as Request,
+        mockResponse as unknown as Response
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
+      const statusResult = (mockResponse.status as jest.Mock).mock.results[0]
+        .value as { json: jest.Mock };
+      expect(statusResult.json).toHaveBeenCalledWith({
+        error: 'URL must not target localhost or private IP ranges',
+        usage:
+          'Use /api-proxy/serve?url=https://example.com (url must be the last query parameter)',
+        example:
+          '/api-proxy/serve?url=https://api.example.com/users?id=1&status=active',
+      });
+    });
+
+    it('should return 404 when endpoint not found', async () => {
+      mockRequest.params = { '0': 'users' };
+      mockService.getEndpointByPath.mockResolvedValue(null);
+
+      await controller.forward(
+        mockRequest as unknown as Request,
+        mockResponse as unknown as Response
       );
 
       expect(mockService.getEndpointByPath).toHaveBeenCalledWith('/users');
@@ -95,7 +116,7 @@ describe('ProxyApiController', () => {
       };
 
       mockRequest.params = { '0': 'users' };
-      mockService.getEndpointByPath.mockReturnValue(disabledEndpoint);
+      mockService.getEndpointByPath.mockResolvedValue(disabledEndpoint);
 
       await controller.forward(
         mockRequest as Request,
@@ -125,7 +146,7 @@ describe('ProxyApiController', () => {
       };
 
       mockRequest.params = { '0': 'users' };
-      mockService.getEndpointByPath.mockReturnValue(overrideEndpoint);
+      mockService.getEndpointByPath.mockResolvedValue(overrideEndpoint);
 
       await controller.forward(
         mockRequest as Request,
@@ -140,6 +161,5 @@ describe('ProxyApiController', () => {
       });
       expect(global.fetch).not.toHaveBeenCalled();
     });
-
   });
 });

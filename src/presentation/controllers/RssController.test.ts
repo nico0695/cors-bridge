@@ -58,6 +58,20 @@ describe('RssController', () => {
       });
     });
 
+    it('should return 400 when url points to localhost', async () => {
+      mockRequest.query = { url: 'http://localhost:3000/feed.xml' };
+
+      await rssController.getFeed(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        error: 'URL must not target localhost or private IP ranges',
+      });
+    });
+
     it('should return feed with CORS headers when found', async () => {
       const mockFeed: Feed = {
         data: '<rss>test</rss>',
