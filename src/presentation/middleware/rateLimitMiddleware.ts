@@ -40,6 +40,18 @@ export const createRateLimitMiddleware = (
   const keyGenerator = options.keyGenerator ?? createIpRateLimitKey;
   const message = options.message ?? DEFAULT_MESSAGE;
 
+  // Periodically evict expired entries to prevent unbounded memory growth.
+  const cleanupInterval = setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of entries) {
+      if (now >= entry.resetTime) {
+        entries.delete(key);
+      }
+    }
+  }, options.windowMs);
+  // Allow the Node.js process to exit even if this interval is still active.
+  cleanupInterval.unref();
+
   // TODO: Replace in-memory rate limiting with a shared store for multi-instance deployments.
   return (req: Request, res: Response, next: NextFunction): void => {
     const now = Date.now();
