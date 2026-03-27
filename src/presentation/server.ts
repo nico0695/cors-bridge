@@ -29,6 +29,11 @@ import { UserController } from './controllers/UserController.js';
 import { initializeDatabase } from '../infrastructure/database/connection.js';
 import { createAuthMiddleware } from './middleware/authMiddleware.js';
 import {
+  createAuthUserOrIpRateLimitKey,
+  createIpRateLimitKey,
+  createRateLimitMiddleware,
+} from './middleware/rateLimitMiddleware.js';
+import {
   createRequireRole,
   createRequireAnyRole,
 } from './middleware/permissionMiddleware.js';
@@ -46,6 +51,13 @@ const logger = pino({
     },
   },
 });
+
+const RATE_LIMITS = {
+  authPublic: { windowMs: 5 * 60 * 1000, max: 10 },
+  publicServe: { windowMs: 60 * 1000, max: 60 },
+  managementWrites: { windowMs: 60 * 1000, max: 20 },
+  feedAccess: { windowMs: 60 * 1000, max: 30 },
+} as const;
 
 // Middleware
 app.use(express.json());
@@ -125,6 +137,38 @@ async function initializeApp(): Promise<void> {
     ['admin', 'user'],
     logger
   );
+  const authPublicRateLimit = createRateLimitMiddleware(
+    {
+      ...RATE_LIMITS.authPublic,
+      category: 'auth-public',
+      keyGenerator: createIpRateLimitKey,
+    },
+    logger
+  );
+  const publicServeRateLimit = createRateLimitMiddleware(
+    {
+      ...RATE_LIMITS.publicServe,
+      category: 'public-serve',
+      keyGenerator: createIpRateLimitKey,
+    },
+    logger
+  );
+  const managementWritesRateLimit = createRateLimitMiddleware(
+    {
+      ...RATE_LIMITS.managementWrites,
+      category: 'management-writes',
+      keyGenerator: createAuthUserOrIpRateLimitKey,
+    },
+    logger
+  );
+  const feedAccessRateLimit = createRateLimitMiddleware(
+    {
+      ...RATE_LIMITS.feedAccess,
+      category: 'feed-access',
+      keyGenerator: createAuthUserOrIpRateLimitKey,
+    },
+    logger
+  );
 
   const ensureDefaultAdminUser = async (): Promise<void> => {
     const defaultName = process.env.DEFAULT_ADMIN_NAME ?? 'admin';
@@ -194,34 +238,43 @@ async function initializeApp(): Promise<void> {
     res.sendFile(path.join(publicPath, 'index.html'));
   });
 
-  app.get('/rss', (req, res) => rssController.getFeed(req, res));
+  app.get('/rss', feedAccessRateLimit, (req, res) =>
+    rssController.getFeed(req, res)
+  );
 
   // New endpoints for feed transformation and enhancement
   app.get(
     '/api/feed/transform',
     authMiddleware.requireAuth,
+    feedAccessRateLimit,
     requireAuthenticatedUser,
     (req, res) => feedController.getTransformedFeed(req, res)
   );
   app.get(
     '/api/feed/merge',
     authMiddleware.requireAuth,
+    feedAccessRateLimit,
     requireAuthenticatedUser,
     (req, res) => feedController.getMergedFeeds(req, res)
   );
   app.get(
     '/api/feed/enhance',
     authMiddleware.requireAuth,
+    feedAccessRateLimit,
     requireAuthenticatedUser,
     (req, res) => feedController.getEnhancedFeed(req, res)
   );
 
   // Authentication Routes
-  app.post('/api-auth/login', (req, res) => authController.login(req, res));
-  app.post('/api-auth/refresh', (req, res) => authController.refresh(req, res));
+  app.post('/api-auth/login', authPublicRateLimit, (req, res) =>
+    authController.login(req, res)
+  );
+  app.post('/api-auth/refresh', authPublicRateLimit, (req, res) =>
+    authController.refresh(req, res)
+  );
 
   // Public registration route (users start as blocked)
-  app.post('/api-auth/register', (req, res) =>
+  app.post('/api-auth/register', authPublicRateLimit, (req, res) =>
     userController.register(req, res)
   );
 
@@ -235,18 +288,21 @@ async function initializeApp(): Promise<void> {
   app.post(
     '/api-auth/users',
     authMiddleware.requireAuth,
+    managementWritesRateLimit,
     requireAdmin,
     (req, res) => userController.create(req, res)
   );
   app.patch(
     '/api-auth/users/:id',
     authMiddleware.requireAuth,
+    managementWritesRateLimit,
     requireAdmin,
     (req, res) => userController.update(req, res)
   );
   app.delete(
     '/api-auth/users/:id',
     authMiddleware.requireAuth,
+    managementWritesRateLimit,
     requireAdmin,
     (req, res) => userController.delete(req, res)
   );
@@ -267,18 +323,21 @@ async function initializeApp(): Promise<void> {
   app.post(
     '/api-mock/endpoints',
     authMiddleware.requireAuth,
+    managementWritesRateLimit,
     requireAuthenticatedUser,
     (req, res) => mockManagementController.create(req, res)
   );
   app.patch(
     '/api-mock/endpoints/:id',
     authMiddleware.requireAuth,
+    managementWritesRateLimit,
     requireAuthenticatedUser,
     (req, res) => mockManagementController.update(req, res)
   );
   app.delete(
     '/api-mock/endpoints/:id',
     authMiddleware.requireAuth,
+    managementWritesRateLimit,
     requireAuthenticatedUser,
     (req, res) => mockManagementController.delete(req, res)
   );
@@ -290,7 +349,9 @@ async function initializeApp(): Promise<void> {
   );
 
   // Mock API Serve Route (wildcard must be last)
-  app.all('/api-mock/serve/*', (req, res) => mockApiController.serve(req, res));
+  app.all('/api-mock/serve/*', publicServeRateLimit, (req, res) =>
+    mockApiController.serve(req, res)
+  );
 
   // Proxy API Management Routes (Admin + User)
   app.get(
@@ -308,18 +369,21 @@ async function initializeApp(): Promise<void> {
   app.post(
     '/api-proxy/endpoints',
     authMiddleware.requireAuth,
+    managementWritesRateLimit,
     requireAuthenticatedUser,
     (req, res) => proxyManagementController.create(req, res)
   );
   app.patch(
     '/api-proxy/endpoints/:id',
     authMiddleware.requireAuth,
+    managementWritesRateLimit,
     requireAuthenticatedUser,
     (req, res) => proxyManagementController.update(req, res)
   );
   app.delete(
     '/api-proxy/endpoints/:id',
     authMiddleware.requireAuth,
+    managementWritesRateLimit,
     requireAuthenticatedUser,
     (req, res) => proxyManagementController.delete(req, res)
   );
@@ -331,7 +395,7 @@ async function initializeApp(): Promise<void> {
   );
 
   // Proxy API Serve Route (wildcard must be last)
-  app.all('/api-proxy/serve/*', (req, res) =>
+  app.all('/api-proxy/serve/*', publicServeRateLimit, (req, res) =>
     proxyApiController.forward(req, res)
   );
 
@@ -361,18 +425,21 @@ async function initializeApp(): Promise<void> {
   app.post(
     '/api-crud/tables',
     authMiddleware.requireAuth,
+    managementWritesRateLimit,
     requireAuthenticatedUser,
     (req, res) => crudManagementController.create(req, res)
   );
   app.patch(
     '/api-crud/tables/:id',
     authMiddleware.requireAuth,
+    managementWritesRateLimit,
     requireAuthenticatedUser,
     (req, res) => crudManagementController.update(req, res)
   );
   app.delete(
     '/api-crud/tables/:id',
     authMiddleware.requireAuth,
+    managementWritesRateLimit,
     requireAuthenticatedUser,
     (req, res) => crudManagementController.delete(req, res)
   );
@@ -384,7 +451,9 @@ async function initializeApp(): Promise<void> {
   );
 
   // CRUD Serve Route (public — wildcard must be last in this group)
-  app.all('/api-crud/serve/*', (req, res) => crudApiController.serve(req, res));
+  app.all('/api-crud/serve/*', publicServeRateLimit, (req, res) =>
+    crudApiController.serve(req, res)
+  );
 
   app.get('/health', (req, res) => {
     const stats = feedRepository.getStats();
