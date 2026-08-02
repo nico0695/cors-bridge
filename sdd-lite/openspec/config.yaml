@@ -1,0 +1,137 @@
+version: "0.1"
+project:
+  name: rss-proxy
+  slug: rss-proxy
+  root: /Users/nicolasschmidt/Documents/develop/proxy_cors
+  package_root: sdd-lite
+  runtime_root: ./sdd-lite
+  stack:
+    languages:
+      - typescript
+    frameworks:
+      - express
+      - typeorm
+      - jest
+    runtime: node
+    package_manager: npm
+
+paths:
+  runtime_root: ./sdd-lite
+  project_context_path: ./sdd-lite/project-context.md
+  skill_catalog_path: ./sdd-lite/skill-catalog.md
+  artifact_root: ./sdd-lite/openspec
+  config_path: ./sdd-lite/openspec/config.yaml
+  changes_root: ./sdd-lite/openspec/changes
+  reviews_root: ./sdd-lite/openspec/reviews
+  archive_root: ./sdd-lite/openspec/archive
+  delivery_root: ./sdd-lite/openspec/delivery
+
+archive:
+  suggest_threshold: 15
+  stale_days: 30
+
+delivery:
+  pr_suggest_min_commits: 3
+
+quality_commands:
+  install:
+    - npm install
+  test:
+    - npm test
+  build:
+    - npm run build
+  lint:
+    - npm run lint
+  typecheck:
+    - npx tsc --noEmit
+  format:
+    - npm run format
+
+bootstrap:
+  status: created
+  strategy: shallow-high-signal
+  generated_at: "2026-08-02T16:31:33Z"
+  generated_by: sddl-init
+  last_validated_at: "2026-08-02T16:31:33Z"
+  refresh_recommended: false
+  refresh_reason_codes: []
+  observed_files:
+    manifests:
+      - package.json
+    lockfiles:
+      - package-lock.json
+    docs:
+      - CLAUDE.md
+      - FRONTEND_GUIDE.md
+    tool_configs:
+      - tsconfig.json
+      - .eslintrc.json
+      - .prettierrc.json
+  observed_paths:
+    source_roots:
+      - src
+    test_roots:
+      - src/application/services/__tests__
+    config_roots:
+      - .
+
+conventions:
+  persisted_language: en
+  persisted_artifacts_english_only: true
+  chat_language: es
+  chat_language_source: inferred
+  asks_only_when_material: true
+  skill_catalog_generation: internal_helper
+
+ai_setups:
+  detected:
+    - claude_code
+  configured:
+    - claude_code
+    - codex
+  skills_installed:
+    - target: .claude/skills
+      method: copy
+      installed_at: "2026-08-02T16:31:33Z"
+      skills:
+        - sddl-init
+        - sddl-proposal
+        - sddl-spec
+        - sddl-design
+        - sddl-plan
+        - sddl-executor
+        - sddl-code-review
+        - sddl-judgment-day
+        - sddl-deep-explorer
+        - sddl-qa-review
+        - sddl-delivery
+        - sddl-archive
+    - target: .agents/skills
+      method: copy
+      installed_at: "2026-08-02T16:31:33Z"
+      skills:
+        - sddl-init
+        - sddl-proposal
+        - sddl-spec
+        - sddl-design
+        - sddl-plan
+        - sddl-executor
+        - sddl-code-review
+        - sddl-judgment-day
+        - sddl-deep-explorer
+        - sddl-qa-review
+        - sddl-delivery
+        - sddl-archive
+  wrappers_injected:
+    - ai: claude_code
+      target_file: CLAUDE.md
+      injected_at: "2026-08-02T16:31:33Z"
+    - ai: codex
+      target_file: AGENTS.md
+      injected_at: "2026-08-02T16:31:40Z"
+
+metadata:
+  bootstrap_version: stage-1
+  package_mode: lite
+  planner_terminal_skill: sddl-plan
+  final_closure_skill: sddl-qa-review
