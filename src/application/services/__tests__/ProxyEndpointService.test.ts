@@ -117,9 +117,9 @@ describe('ProxyEndpointService', () => {
 
       await service.createEndpoint(dto);
 
-      await expect(async () => await service.createEndpoint(dto)).rejects.toThrow(
-        'Endpoint with path /duplicate already exists'
-      );
+      await expect(
+        async () => await service.createEndpoint(dto)
+      ).rejects.toThrow('Endpoint with path /duplicate already exists');
     });
 
     it('should throw error when max endpoints limit is reached', async () => {
@@ -133,12 +133,13 @@ describe('ProxyEndpointService', () => {
       }
 
       // Try to create the 51st
-      await expect(async () =>
-        await service.createEndpoint({
-          name: 'Endpoint 51',
-          path: '/endpoint-51',
-          baseUrl: 'https://api.example.com',
-        })
+      await expect(
+        async () =>
+          await service.createEndpoint({
+            name: 'Endpoint 51',
+            path: '/endpoint-51',
+            baseUrl: 'https://api.example.com',
+          })
       ).rejects.toThrow(
         'Cannot create endpoint: maximum limit of 50 endpoints reached'
       );
@@ -151,8 +152,10 @@ describe('ProxyEndpointService', () => {
         baseUrl: 'api.example.com',
       };
 
-      await expect(async () => await service.createEndpoint(dto)).rejects.toThrow(
-        'Base URL must start with http:// or https://'
+      await expect(
+        async () => await service.createEndpoint(dto)
+      ).rejects.toThrow(
+        'Base URL must start with http:// or https:// and be properly formatted'
       );
     });
 
@@ -188,9 +191,9 @@ describe('ProxyEndpointService', () => {
         statusCodeOverride: 99,
       };
 
-      await expect(async () => await service.createEndpoint(dto)).rejects.toThrow(
-        'Status code override must be between 100 and 599'
-      );
+      await expect(
+        async () => await service.createEndpoint(dto)
+      ).rejects.toThrow('Status code override must be between 100 and 599');
     });
 
     it('should throw error for invalid status code override (too high)', async () => {
@@ -201,9 +204,9 @@ describe('ProxyEndpointService', () => {
         statusCodeOverride: 600,
       };
 
-      await expect(async () => await service.createEndpoint(dto)).rejects.toThrow(
-        'Status code override must be between 100 and 599'
-      );
+      await expect(
+        async () => await service.createEndpoint(dto)
+      ).rejects.toThrow('Status code override must be between 100 and 599');
     });
 
     it('should accept valid status code override', async () => {
@@ -239,9 +242,9 @@ describe('ProxyEndpointService', () => {
         delayMs: -1,
       };
 
-      await expect(async () => await service.createEndpoint(dto)).rejects.toThrow(
-        'Delay must be between 0 and 10000ms'
-      );
+      await expect(
+        async () => await service.createEndpoint(dto)
+      ).rejects.toThrow('Delay must be between 0 and 10000ms');
     });
 
     it('should throw error for invalid delay (too high)', async () => {
@@ -252,9 +255,9 @@ describe('ProxyEndpointService', () => {
         delayMs: 10001,
       };
 
-      await expect(async () => await service.createEndpoint(dto)).rejects.toThrow(
-        'Delay must be between 0 and 10000ms'
-      );
+      await expect(
+        async () => await service.createEndpoint(dto)
+      ).rejects.toThrow('Delay must be between 0 and 10000ms');
     });
 
     it('should accept valid delay', async () => {
@@ -281,6 +284,32 @@ describe('ProxyEndpointService', () => {
       const result = await service.createEndpoint(dto);
 
       expect(result.groupId).toBe('test-group');
+    });
+
+    it('should reject private base URLs', async () => {
+      await expect(
+        async () =>
+          await service.createEndpoint({
+            name: 'Private Base URL',
+            path: '/private-base-url',
+            baseUrl: 'http://127.0.0.1:8080',
+          })
+      ).rejects.toThrow(
+        'Base URL must not target localhost or private IP ranges'
+      );
+    });
+
+    it('should reject invalid paths', async () => {
+      await expect(
+        async () =>
+          await service.createEndpoint({
+            name: 'Invalid Path',
+            path: '/Invalid/Path',
+            baseUrl: 'https://api.example.com',
+          })
+      ).rejects.toThrow(
+        'Path can only contain lowercase letters, numbers, slashes, hyphens, and underscores'
+      );
     });
   });
 
@@ -396,8 +425,8 @@ describe('ProxyEndpointService', () => {
         baseUrl: 'https://api.example.com',
       });
 
-      await expect(async () =>
-        await service.updateEndpoint(first.id, { path: '/second' })
+      await expect(
+        async () => await service.updateEndpoint(first.id, { path: '/second' })
       ).rejects.toThrow('Endpoint with path /second already exists');
     });
 
@@ -408,9 +437,12 @@ describe('ProxyEndpointService', () => {
         baseUrl: 'https://api.example.com',
       });
 
-      await expect(async () =>
-        await service.updateEndpoint(created.id, { baseUrl: 'invalid-url' })
-      ).rejects.toThrow('Base URL must start with http:// or https://');
+      await expect(
+        async () =>
+          await service.updateEndpoint(created.id, { baseUrl: 'invalid-url' })
+      ).rejects.toThrow(
+        'Base URL must start with http:// or https:// and be properly formatted'
+      );
     });
 
     it('should throw error when updating to invalid status code', async () => {
@@ -420,8 +452,9 @@ describe('ProxyEndpointService', () => {
         baseUrl: 'https://api.example.com',
       });
 
-      await expect(async () =>
-        await service.updateEndpoint(created.id, { statusCodeOverride: 999 })
+      await expect(
+        async () =>
+          await service.updateEndpoint(created.id, { statusCodeOverride: 999 })
       ).rejects.toThrow('Status code override must be between 100 and 599');
     });
 
@@ -432,8 +465,8 @@ describe('ProxyEndpointService', () => {
         baseUrl: 'https://api.example.com',
       });
 
-      await expect(async () =>
-        await service.updateEndpoint(created.id, { delayMs: 20000 })
+      await expect(
+        async () => await service.updateEndpoint(created.id, { delayMs: 20000 })
       ).rejects.toThrow('Delay must be between 0 and 10000ms');
     });
 

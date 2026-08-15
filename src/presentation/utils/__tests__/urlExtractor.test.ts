@@ -141,6 +141,10 @@ describe('urlExtractor', () => {
       expect(isValidHttpUrl('https://')).toBe(false);
     });
 
+    it('should reject localhost URLs', () => {
+      expect(isValidHttpUrl('http://localhost:3000')).toBe(false);
+    });
+
     it('should reject non-URL strings', () => {
       expect(isValidHttpUrl('not a url')).toBe(false);
     });
@@ -189,6 +193,15 @@ describe('urlExtractor', () => {
       const result = extractAndValidateUrl(req);
       expect(result.url).toBeNull();
       expect(result.error).toContain('properly formatted');
+    });
+
+    it('should return error when URL targets localhost', () => {
+      const req = createMockRequest('/proxy?url=http://localhost:3000');
+      const result = extractAndValidateUrl(req);
+      expect(result.url).toBeNull();
+      expect(result.error).toContain(
+        'must not target localhost or private IP ranges'
+      );
     });
 
     it('should validate complex URLs with multiple query params', () => {

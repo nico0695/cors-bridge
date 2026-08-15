@@ -119,9 +119,9 @@ describe('MockEndpointService', () => {
 
       await service.createEndpoint(dto);
 
-      await expect(async () => await service.createEndpoint(dto)).rejects.toThrow(
-        'Endpoint with path /duplicate already exists'
-      );
+      await expect(
+        async () => await service.createEndpoint(dto)
+      ).rejects.toThrow('Endpoint with path /duplicate already exists');
     });
 
     it('should throw error when max endpoints limit is reached', async () => {
@@ -135,12 +135,13 @@ describe('MockEndpointService', () => {
       }
 
       // Try to create the 51st
-      await expect(async () =>
-        await service.createEndpoint({
-          name: 'Endpoint 51',
-          path: '/endpoint-51',
-          responseData: {},
-        })
+      await expect(
+        async () =>
+          await service.createEndpoint({
+            name: 'Endpoint 51',
+            path: '/endpoint-51',
+            responseData: {},
+          })
       ).rejects.toThrow(
         'Cannot create endpoint: maximum limit of 50 endpoints reached'
       );
@@ -172,6 +173,42 @@ describe('MockEndpointService', () => {
       const result = await service.createEndpoint(dto);
 
       expect(result.groupId).toBe('test-group');
+    });
+
+    it('should reject invalid paths', async () => {
+      await expect(
+        async () =>
+          await service.createEndpoint({
+            name: 'Invalid Path',
+            path: '/Invalid/Path',
+            responseData: {},
+          })
+      ).rejects.toThrow(
+        'Path can only contain lowercase letters, numbers, slashes, hyphens, and underscores'
+      );
+    });
+
+    it('should reject disallowed content types', async () => {
+      await expect(
+        async () =>
+          await service.createEndpoint({
+            name: 'Invalid Content Type',
+            path: '/invalid-content-type',
+            responseData: {},
+            contentType: 'application/pdf',
+          })
+      ).rejects.toThrow('Content type is not allowed');
+    });
+
+    it('should reject oversized response data', async () => {
+      await expect(
+        async () =>
+          await service.createEndpoint({
+            name: 'Large Payload',
+            path: '/large-payload',
+            responseData: { value: 'x'.repeat(1024 * 100) },
+          })
+      ).rejects.toThrow('Response data must be at most 102400 bytes');
     });
   });
 
@@ -287,8 +324,8 @@ describe('MockEndpointService', () => {
         responseData: {},
       });
 
-      await expect(async () =>
-        await service.updateEndpoint(first.id, { path: '/second' })
+      await expect(
+        async () => await service.updateEndpoint(first.id, { path: '/second' })
       ).rejects.toThrow('Endpoint with path /second already exists');
     });
 

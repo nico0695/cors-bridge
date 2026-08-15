@@ -5,6 +5,13 @@ import { FeedParser } from '../../infrastructure/utils/FeedParser.js';
 import { FeedTransformService } from '../../application/services/FeedTransformService.js';
 import { FormatConversionService } from '../../application/services/FormatConversionService.js';
 import { ContentEnhancementService } from '../../application/services/ContentEnhancementService.js';
+import {
+  InputValidationError,
+  parseOptionalPositiveInt,
+  validateEnumValue,
+  validateIsoDateString,
+  validatePublicHttpUrl,
+} from '../../shared/validation/inputValidation.js';
 
 export class FeedController {
   private feedParser: FeedParser;
@@ -24,11 +31,30 @@ export class FeedController {
 
   async getTransformedFeed(req: Request, res: Response): Promise<void> {
     try {
-      const url = req.query.url as string;
-      if (!url) {
-        res.status(400).json({ error: 'URL parameter is required' });
+      const url = this.requireFeedUrl(req.query.url);
+      const fromDate = validateIsoDateString(req.query.fromDate, 'fromDate');
+      const toDate = validateIsoDateString(req.query.toDate, 'toDate');
+      if (fromDate && toDate && Date.parse(fromDate) > Date.parse(toDate)) {
+        res
+          .status(400)
+          .json({ error: 'fromDate must be earlier than or equal to toDate' });
         return;
       }
+
+      const sortBy = validateEnumValue(req.query.sortBy, 'sortBy', [
+        'date',
+        'title',
+      ] as const);
+      const order = validateEnumValue(req.query.order, 'order', [
+        'asc',
+        'desc',
+      ] as const);
+      const format = validateEnumValue(req.query.format, 'format', [
+        'rss',
+        'atom',
+        'json',
+      ] as const);
+      const limit = parseOptionalPositiveInt(req.query.limit, 'limit', 50);
 
       this.logger.info({ url }, 'Fetching feed for transformation');
 
@@ -48,14 +74,12 @@ export class FeedController {
         excludeKeywords: req.query.exclude
           ? (req.query.exclude as string).split(',')
           : undefined,
-        fromDate: req.query.fromDate as string | undefined,
-        toDate: req.query.toDate as string | undefined,
+        fromDate,
+        toDate,
         categories: req.query.categories
           ? (req.query.categories as string).split(',')
           : undefined,
-        limit: req.query.limit
-          ? parseInt(req.query.limit as string)
-          : undefined,
+        limit,
       };
 
       let transformedFeed = this.transformService.filter(
@@ -64,22 +88,21 @@ export class FeedController {
       );
 
       // Apply sorting
-      if (req.query.sortBy) {
+      if (sortBy) {
         transformedFeed = this.transformService.sort(transformedFeed, {
-          by: req.query.sortBy as 'date' | 'title',
-          order: (req.query.order as 'asc' | 'desc') || 'desc',
+          by: sortBy,
+          order: order || 'desc',
         });
       }
 
       // Convert to requested format
-      const format = (req.query.format as string) || 'rss';
       let output: string;
       let contentType: string;
 
-      if (format === 'json') {
+      if ((format || 'rss') === 'json') {
         output = this.conversionService.toJSON(transformedFeed);
         contentType = 'application/json';
-      } else if (format === 'atom') {
+      } else if ((format || 'rss') === 'atom') {
         output = this.conversionService.toAtom(transformedFeed);
         contentType = 'application/atom+xml';
       } else {
@@ -91,6 +114,10 @@ export class FeedController {
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.send(output);
     } catch (error) {
+      if (error instanceof InputValidationError) {
+        res.status(400).json({ error: error.message });
+        return;
+      }
       this.logger.error(
         { error: (error as Error).message },
         'Error transforming feed'
@@ -109,7 +136,23 @@ export class FeedController {
         return;
       }
 
-      const urlList = urls.split(',').map((u) => u.trim());
+      const urlList = urls
+        .split(',')
+        .map((u) => validatePublicHttpUrl(u, 'URL'))
+        .filter(Boolean);
+      if (urlList.length === 0 || urlList.length > 5) {
+        res
+          .status(400)
+          .json({ error: 'urls must contain between 1 and 5 valid URLs' });
+        return;
+      }
+      const format = validateEnumValue(req.query.format, 'format', [
+        'rss',
+        'atom',
+        'json',
+      ] as const);
+      const limit = parseOptionalPositiveInt(req.query.limit, 'limit', 50);
+
       this.logger.info({ urls: urlList }, 'Merging feeds');
 
       // Fetch all feeds
@@ -129,22 +172,18 @@ export class FeedController {
       const mergedFeed = this.transformService.merge(parsedFeeds);
 
       // Apply limit if specified
-      const limit = req.query.limit
-        ? parseInt(req.query.limit as string)
-        : undefined;
       const finalFeed = limit
         ? this.transformService.filter(mergedFeed, { limit })
         : mergedFeed;
 
       // Convert to requested format
-      const format = (req.query.format as string) || 'rss';
       let output: string;
       let contentType: string;
 
-      if (format === 'json') {
+      if ((format || 'rss') === 'json') {
         output = this.conversionService.toJSON(finalFeed);
         contentType = 'application/json';
-      } else if (format === 'atom') {
+      } else if ((format || 'rss') === 'atom') {
         output = this.conversionService.toAtom(finalFeed);
         contentType = 'application/atom+xml';
       } else {
@@ -156,6 +195,10 @@ export class FeedController {
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.send(output);
     } catch (error) {
+      if (error instanceof InputValidationError) {
+        res.status(400).json({ error: error.message });
+        return;
+      }
       this.logger.error(
         { error: (error as Error).message },
         'Error merging feeds'
@@ -166,11 +209,12 @@ export class FeedController {
 
   async getEnhancedFeed(req: Request, res: Response): Promise<void> {
     try {
-      const url = req.query.url as string;
-      if (!url) {
-        res.status(400).json({ error: 'URL parameter is required' });
-        return;
-      }
+      const url = this.requireFeedUrl(req.query.url);
+      const format = validateEnumValue(req.query.format, 'format', [
+        'rss',
+        'atom',
+        'json',
+      ] as const);
 
       this.logger.info({ url }, 'Fetching feed for enhancement');
 
@@ -190,14 +234,13 @@ export class FeedController {
       const finalFeed = this.enhancementService.extractMetadata(enhancedFeed);
 
       // Convert to requested format
-      const format = (req.query.format as string) || 'rss';
       let output: string;
       let contentType: string;
 
-      if (format === 'json') {
+      if ((format || 'rss') === 'json') {
         output = this.conversionService.toJSON(finalFeed);
         contentType = 'application/json';
-      } else if (format === 'atom') {
+      } else if ((format || 'rss') === 'atom') {
         output = this.conversionService.toAtom(finalFeed);
         contentType = 'application/atom+xml';
       } else {
@@ -209,11 +252,23 @@ export class FeedController {
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.send(output);
     } catch (error) {
+      if (error instanceof InputValidationError) {
+        res.status(400).json({ error: error.message });
+        return;
+      }
       this.logger.error(
         { error: (error as Error).message },
         'Error enhancing feed'
       );
       res.status(500).json({ error: 'Failed to enhance feed' });
     }
+  }
+
+  private requireFeedUrl(raw: unknown): string {
+    if (!raw || typeof raw !== 'string') {
+      throw new InputValidationError('URL parameter is required');
+    }
+
+    return validatePublicHttpUrl(raw);
   }
 }

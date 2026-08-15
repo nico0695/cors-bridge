@@ -4,9 +4,16 @@ import type {
   CreateProxyEndpointDto,
   UpdateProxyEndpointDto,
 } from '../../domain/ProxyEndpoint.js';
+import {
+  normalizeEndpointPath,
+  normalizeOptionalGroupId,
+  normalizeRequiredName,
+  validateDelayMs,
+  validateHttpStatusCode,
+  validatePublicHttpUrl,
+} from '../../shared/validation/inputValidation.js';
 
 const MAX_ENDPOINTS = 50;
-const MAX_DELAY_MS = 10000;
 
 export class ProxyEndpointService {
   constructor(private readonly repository: ProxyEndpointRepository) {}
@@ -31,37 +38,37 @@ export class ProxyEndpointService {
       );
     }
 
-    const normalizedPath = dto.path.startsWith('/') ? dto.path : `/${dto.path}`;
+    const name = normalizeRequiredName(dto.name);
+    const normalizedPath = normalizeEndpointPath(dto.path);
+    const groupId = normalizeOptionalGroupId(dto.groupId);
+    const baseUrl =
+      dto.baseUrl === undefined
+        ? undefined
+        : validatePublicHttpUrl(dto.baseUrl, 'Base URL');
 
     const existing = await this.repository.findByPath(normalizedPath);
     if (existing) {
       throw new Error(`Endpoint with path ${normalizedPath} already exists`);
     }
 
-    if (dto.baseUrl) {
-      if (
-        !dto.baseUrl.startsWith('http://') &&
-        !dto.baseUrl.startsWith('https://')
-      ) {
-        throw new Error('Base URL must start with http:// or https://');
-      }
-    }
-
-    if (
-      dto.statusCodeOverride !== undefined &&
-      (dto.statusCodeOverride < 100 || dto.statusCodeOverride > 599)
-    ) {
-      throw new Error('Status code override must be between 100 and 599');
-    }
-
-    const delayMs = dto.delayMs || 0;
-    if (delayMs < 0 || delayMs > MAX_DELAY_MS) {
-      throw new Error(`Delay must be between 0 and ${MAX_DELAY_MS}ms`);
-    }
+    const statusCodeOverride =
+      dto.statusCodeOverride === undefined
+        ? undefined
+        : validateHttpStatusCode(
+            dto.statusCodeOverride,
+            'Status code override'
+          );
+    const delayMs =
+      dto.delayMs === undefined ? 0 : validateDelayMs(dto.delayMs);
 
     return this.repository.save({
       ...dto,
+      name,
       path: normalizedPath,
+      baseUrl,
+      groupId,
+      statusCodeOverride,
+      delayMs,
       useCache: dto.useCache || false,
     });
   }
@@ -70,10 +77,12 @@ export class ProxyEndpointService {
     id: string,
     dto: UpdateProxyEndpointDto
   ): Promise<ProxyEndpoint | null> {
-    if (dto.path) {
-      const normalizedPath = dto.path.startsWith('/')
-        ? dto.path
-        : `/${dto.path}`;
+    if (dto.name !== undefined) {
+      dto.name = normalizeRequiredName(dto.name);
+    }
+
+    if (dto.path !== undefined) {
+      const normalizedPath = normalizeEndpointPath(dto.path);
       const existing = await this.repository.findByPath(normalizedPath);
       if (existing && existing.id !== id) {
         throw new Error(`Endpoint with path ${normalizedPath} already exists`);
@@ -81,27 +90,29 @@ export class ProxyEndpointService {
       dto.path = normalizedPath;
     }
 
-    if (
-      dto.baseUrl &&
-      !dto.baseUrl.startsWith('http://') &&
-      !dto.baseUrl.startsWith('https://')
-    ) {
-      throw new Error('Base URL must start with http:// or https://');
+    if (dto.groupId !== undefined) {
+      dto.groupId = normalizeOptionalGroupId(dto.groupId);
+    }
+
+    if (dto.baseUrl !== undefined) {
+      dto.baseUrl =
+        dto.baseUrl === ''
+          ? undefined
+          : validatePublicHttpUrl(dto.baseUrl, 'Base URL');
     }
 
     if (
       dto.statusCodeOverride !== undefined &&
-      dto.statusCodeOverride !== null &&
-      (dto.statusCodeOverride < 100 || dto.statusCodeOverride > 599)
+      dto.statusCodeOverride !== null
     ) {
-      throw new Error('Status code override must be between 100 and 599');
+      dto.statusCodeOverride = validateHttpStatusCode(
+        dto.statusCodeOverride,
+        'Status code override'
+      );
     }
 
-    if (
-      dto.delayMs !== undefined &&
-      (dto.delayMs < 0 || dto.delayMs > MAX_DELAY_MS)
-    ) {
-      throw new Error(`Delay must be between 0 and ${MAX_DELAY_MS}ms`);
+    if (dto.delayMs !== undefined) {
+      dto.delayMs = validateDelayMs(dto.delayMs);
     }
 
     return this.repository.update(id, dto);

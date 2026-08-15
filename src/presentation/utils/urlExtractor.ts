@@ -1,4 +1,5 @@
 import type { Request } from 'express';
+import { validatePublicHttpUrl } from '../../shared/validation/inputValidation.js';
 
 /**
  * Extracts the target URL from request query parameters.
@@ -35,16 +36,9 @@ export function extractTargetUrl(req: Request): string | null {
  * @returns True if valid, false otherwise
  */
 export function isValidHttpUrl(url: string): boolean {
-  if (!url) return false;
-
-  // Check for http/https prefix
-  if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    return false;
-  }
-
   // Validate URL format using URL constructor
   try {
-    new URL(url);
+    validatePublicHttpUrl(url);
     return true;
   } catch {
     return false;
@@ -72,11 +66,17 @@ export function extractAndValidateUrl(req: Request): {
   }
 
   if (!isValidHttpUrl(url)) {
-    return {
-      url: null,
-      error:
-        'URL must start with http:// or https:// and be properly formatted',
-    };
+    try {
+      validatePublicHttpUrl(url);
+    } catch (error) {
+      return {
+        url: null,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'URL must start with http:// or https:// and be properly formatted',
+      };
+    }
   }
 
   return { url, error: null };
